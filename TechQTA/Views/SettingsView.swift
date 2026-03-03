@@ -11,52 +11,58 @@ struct SettingsView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 24) {
-                if let session = sessionManager.session {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label(session.hostDisplay, systemImage: "globe")
-                            .font(.headline)
+        List {
+            if let session = sessionManager.session {
+                Section {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "globe")
+                                .font(.title2)
+                                .foregroundStyle(.tint)
+                                .frame(width: 40, height: 40)
 
-                        HStack {
-                            Text("JSESSIONID:")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                            Text(session.jsessionId.isEmpty ? "None" : "Present")
-                                .font(.caption)
-                                .fontWeight(.medium)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(session.hostDisplay)
+                                    .font(.headline)
+                                    .fontWeight(.semibold)
+                                Text(session.jsessionId.isEmpty ? "Not connected" : "Session active")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
 
                         heartbeatStatusView
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(20)
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
+                    .padding(.vertical, 8)
+                } header: {
+                    Text("Account")
+                }
 
+                Section {
                     Button(role: .destructive) {
                         sessionManager.logout()
                     } label: {
-                        Text("Logout")
-                            .font(.headline)
+                        Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
+                            .font(.body)
+                            .fontWeight(.medium)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.red)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                    .shadow(color: Color.red.opacity(0.2), radius: 8, x: 0, y: 4)
-                } else {
-                    Text("Not logged in")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
-
-                Spacer(minLength: 24)
+            } else {
+                Section {
+                    HStack(spacing: 12) {
+                        Image(systemName: "person.crop.circle.badge.xmark")
+                            .font(.title2)
+                            .foregroundStyle(.tertiary)
+                        Text("Not logged in")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 8)
+                }
             }
-            .padding()
-            .padding(.top, 12)
         }
+        .listStyle(.insetGrouped)
         .task(id: sessionManager.session?.jsessionId) {
             if sessionManager.session != nil {
                 await sessionManager.sendHeartbeat()
@@ -66,31 +72,52 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var heartbeatStatusView: some View {
-        switch sessionManager.heartbeatStatus {
-        case .idle:
-            Text("Last heartbeat: —")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        case .loading:
-            HStack {
-                ProgressView()
-                    .scaleEffect(0.8)
-                Text("Sending heartbeat...")
+        HStack(spacing: 8) {
+            Image(systemName: heartbeatStatusIcon)
+                .font(.subheadline)
+                .foregroundStyle(heartbeatStatusColor)
+            switch sessionManager.heartbeatStatus {
+            case .idle:
+                Text("Last heartbeat: —")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+            case .loading:
+                HStack(spacing: 6) {
+                    Text("Sending heartbeat…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    ProgressView()
+                        .scaleEffect(0.8)
+                }
+            case .success(let date):
+                Text("Last heartbeat: \(date, format: .dateTime)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            case .unauthorized:
+                Text("Session expired")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            case .error(let msg):
+                Text("Error: \(msg)")
+                    .font(.caption)
+                    .foregroundStyle(.red)
             }
-        case .success(let date):
-            Text("Last heartbeat: \(date, format: .dateTime)")
-                .font(.caption)
-                .foregroundStyle(.green)
-        case .unauthorized:
-            Text("Session expired (401/403)")
-                .font(.caption)
-                .foregroundStyle(.red)
-        case .error(let msg):
-            Text("Error: \(msg)")
-                .font(.caption)
-                .foregroundStyle(.red)
+        }
+    }
+
+    private var heartbeatStatusIcon: String {
+        switch sessionManager.heartbeatStatus {
+        case .success: return "checkmark.circle.fill"
+        case .unauthorized, .error: return "exclamationmark.triangle.fill"
+        default: return "circle.dotted"
+        }
+    }
+
+    private var heartbeatStatusColor: Color {
+        switch sessionManager.heartbeatStatus {
+        case .success: return .green
+        case .unauthorized, .error: return .red
+        default: return .secondary
         }
     }
 }

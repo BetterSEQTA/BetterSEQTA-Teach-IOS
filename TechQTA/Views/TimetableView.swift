@@ -12,14 +12,17 @@ struct TimetableView: View {
     @StateObject private var viewModel = TimetableViewModel()
 
     var body: some View {
-        VStack(spacing: 12) {
-            HStack(spacing: 12) {
+        VStack(spacing: 0) {
+            HStack(spacing: 16) {
                 Button {
                     viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: viewModel.selectedDate) ?? viewModel.selectedDate
                 } label: {
                     Image(systemName: "chevron.left")
+                        .font(.body.weight(.semibold))
                         .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
 
                 DatePicker(
                     "Date",
@@ -33,23 +36,30 @@ struct TimetableView: View {
                     viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: viewModel.selectedDate) ?? viewModel.selectedDate
                 } label: {
                     Image(systemName: "chevron.right")
+                        .font(.body.weight(.semibold))
                         .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
-
-                Spacer()
+                .buttonStyle(.plain)
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
 
             if viewModel.isLoading {
-                ProgressView("Loading timetable…")
-                    .padding()
-                Spacer()
+                VStack(spacing: 16) {
+                    ProgressView()
+                    Text("Loading timetable…")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(.top, 60)
             } else if let errorMessage = viewModel.errorMessage {
-                Text(errorMessage)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .padding()
-                Spacer()
+                ContentUnavailableView(
+                    "Couldn't load timetable",
+                    systemImage: "exclamationmark.triangle",
+                    description: Text(errorMessage)
+                )
             } else if viewModel.lessons.isEmpty {
                 ContentUnavailableView("No lessons", systemImage: "calendar", description: Text("No lessons found for this day."))
             } else {
@@ -68,6 +78,7 @@ struct TimetableView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .contentMargins(.top, 8, for: .scrollContent)
             }
         }
         .task(id: AppDateFormatters.isoYMD.string(from: viewModel.selectedDate) + "-\(sessionManager.staffId ?? 0)-\(sessionManager.session?.jsessionId ?? "")") {
@@ -77,7 +88,7 @@ struct TimetableView: View {
 
     @ViewBuilder
     private func lessonRow(_ lesson: TeachLesson) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .center, spacing: 14) {
             Circle()
                 .fill(Color.green.opacity(0.1))
                 .frame(width: 48, height: 48)
@@ -87,13 +98,14 @@ struct TimetableView: View {
                         .foregroundStyle(.green)
                 }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(lesson.description ?? lesson.code ?? "Lesson")
                     .font(.headline)
+                    .fontWeight(.semibold)
                     .foregroundStyle(.primary)
                     .lineLimit(2)
 
-                HStack(spacing: 8) {
+                HStack(spacing: 6) {
                     if let period = lesson.period, !period.isEmpty {
                         Text(period)
                             .font(.caption)
@@ -105,22 +117,20 @@ struct TimetableView: View {
                     Text("\(lesson.from) – \(lesson.until)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-
                     if let room = lesson.room, !room.isEmpty {
                         Text("· \(room)")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
-
                     if lesson.isAdhoc {
-                        Text("· Untimetabled lesson")
+                        Text("· Untimetabled")
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     }
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 }
 

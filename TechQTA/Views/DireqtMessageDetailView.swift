@@ -30,23 +30,32 @@ struct DireqtMessageDetailView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         // Subject and metadata
-                        VStack(alignment: .leading, spacing: 4) {
+                        VStack(alignment: .leading, spacing: 8) {
                             Text(detail.subject ?? "No subject")
-                                .font(.title3)
-                                .fontWeight(.semibold)
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.primary)
 
-                            HStack(spacing: 6) {
+                            HStack(spacing: 12) {
                                 if let sender = detail.sender {
-                                    Text(sender)
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "person.fill")
+                                            .font(.caption)
+                                            .foregroundStyle(.tertiary)
+                                        Text(sender)
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                                 if let date = detail.date {
-                                    Text("·")
-                                        .foregroundStyle(.tertiary)
-                                    Text(date, format: .dateTime.day().month().year().hour().minute())
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "clock")
+                                            .font(.caption)
+                                            .foregroundStyle(.tertiary)
+                                        Text(date, format: .dateTime.day().month().year().hour().minute())
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
                                 }
                             }
                         }
@@ -269,18 +278,18 @@ struct DireqtMessageDetailView: View {
                     }
             }
 
-            if participants.count > 3 {
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) {
-                        participantsExpanded.toggle()
-                    }
-                } label: {
-                    Text(participantsExpanded ? "Show less" : "Show all (\(participants.count))")
-                        .font(.caption)
-                        .foregroundStyle(.blue)
-                }
-                .padding(.top, 4)
-            }
+                        if participants.count > 3 {
+                            Button {
+                                withAnimation(.snappy(duration: 0.2)) {
+                                    participantsExpanded.toggle()
+                                }
+                            } label: {
+                                Text(participantsExpanded ? "Show less" : "Show all (\(participants.count))")
+                                    .font(.caption)
+                                    .foregroundStyle(.blue)
+                            }
+                            .padding(.top, 4)
+                        }
         }
     }
 
@@ -293,15 +302,15 @@ struct DireqtMessageDetailView: View {
                 .font(.headline)
 
             ForEach(files) { file in
-                Button {
-                    openAttachment(file)
-                } label: {
-                    HStack(spacing: 12) {
-                        Image(systemName: iconForMime(file.mimetype))
-                            .font(.title3)
-                            .foregroundStyle(.blue)
-                            .frame(width: 36, height: 36)
-                            .background(Color.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                        Button {
+                            openAttachment(file)
+                        } label: {
+                            HStack(spacing: 14) {
+                                Image(systemName: iconForMime(file.mimetype))
+                                    .font(.title3)
+                                    .foregroundStyle(.blue)
+                                    .frame(width: 36, height: 36)
+                                    .background(Color.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(file.filename)

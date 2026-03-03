@@ -36,22 +36,23 @@ struct TeachLoginWebView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "info.circle")
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title3)
                     .foregroundStyle(.tint)
-                    .padding(.top, 1)
 
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text("After you finish signing in, tap **Done**.")
-                        .font(.footnote)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
                     Text("We’ll capture your session cookie from this device.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(12)
-            .background(.regularMaterial)
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground))
         }
         .navigationTitle(baseUrl.host ?? "SEQTA Teach")
         .navigationBarTitleDisplayMode(.large)

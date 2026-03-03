@@ -55,6 +55,7 @@ struct SetupOnboardingView: View {
                 } label: {
                     Text("Get Started")
                         .font(.headline)
+                        .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }
@@ -63,12 +64,13 @@ struct SetupOnboardingView: View {
                 .padding(.bottom, 32)
             } else {
                 Button {
-                    withAnimation {
+                    withAnimation(.easeInOut(duration: 0.25)) {
                         currentPage += 1
                     }
                 } label: {
                     Text("Next")
                         .font(.headline)
+                        .fontWeight(.semibold)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
                 }
@@ -84,7 +86,7 @@ struct SetupOnboardingView: View {
     @ViewBuilder
     private func setupCard(title: String, icon: String, body: String) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 24) {
                 Image(systemName: icon)
                     .font(.system(size: 44))
                     .foregroundStyle(.tint)
@@ -93,7 +95,7 @@ struct SetupOnboardingView: View {
 
                 Text(title)
                     .font(.title2)
-                    .fontWeight(.semibold)
+                    .fontWeight(.bold)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
 
@@ -101,10 +103,11 @@ struct SetupOnboardingView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                    .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity)
             }
-            .padding(24)
+            .padding(28)
         }
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .padding(.horizontal, 20)

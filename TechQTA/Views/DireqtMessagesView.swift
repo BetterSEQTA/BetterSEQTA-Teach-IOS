@@ -26,15 +26,15 @@ struct DireqtMessagesView: View {
             }
 
             // Floating search + compose
-            HStack(spacing: 10) {
-                HStack(spacing: 8) {
+            HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
-                    TextField("Search", text: $viewModel.searchText)
+                    TextField("Search messages", text: $viewModel.searchText)
                         .font(.subheadline)
                 }
-                .padding(.horizontal, 12)
+                .padding(.horizontal, 16)
                 .frame(height: 44)
                 .background(Capsule().fill(.ultraThinMaterial))
                 .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
@@ -53,7 +53,7 @@ struct DireqtMessagesView: View {
             }
             .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
             .padding(.horizontal, 20)
-            .padding(.bottom, 8)
+            .padding(.bottom, 12)
         }
         .fullScreenCover(isPresented: $showCompose) {
             ComposeMessageView(mode: .new)
@@ -231,14 +231,7 @@ struct DireqtMessagesView: View {
 
     @ViewBuilder
     private func messageRow(_ msg: TeachMessage) -> some View {
-        HStack(alignment: .center, spacing: 0) {
-            // Unread dot -- vertically centered with the avatar
-            Circle()
-                .fill(msg.read ? .clear : .blue)
-                .frame(width: 8, height: 8)
-                .padding(.trailing, 8)
-                .accessibilityHidden(true)
-
+        HStack(alignment: .center, spacing: 14) {
             Circle()
                 .fill(Color.blue.opacity(0.1))
                 .frame(width: 44, height: 44)
@@ -254,10 +247,17 @@ struct DireqtMessagesView: View {
                             .strokeBorder(Color.orange, lineWidth: 2.5)
                     }
                 }
-                .padding(.trailing, 12)
+                .overlay(alignment: .topTrailing) {
+                    if !msg.read {
+                        Circle()
+                            .fill(.blue)
+                            .frame(width: 12, height: 12)
+                            .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
+                            .offset(x: 4, y: -4)
+                    }
+                }
 
-            VStack(alignment: .leading, spacing: 3) {
-                // Row 1: Subject (primary heading) + date
+            VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(msg.subject ?? "No subject")
                         .font(.subheadline)
@@ -267,11 +267,11 @@ struct DireqtMessagesView: View {
 
                     Spacer()
 
-                    HStack(spacing: 4) {
+                    HStack(spacing: 6) {
                         if msg.attachments {
                             Image(systemName: "paperclip")
                                 .font(.caption2)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.tertiary)
                         }
                         if let date = msg.date {
                             Text(AppDateFormatters.relativeMessageDate(date))
@@ -281,31 +281,29 @@ struct DireqtMessagesView: View {
                     }
                 }
 
-                // Row 2: From
                 HStack(spacing: 0) {
                     Text("From: ")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundStyle(.tertiary)
                     Text(msg.sender ?? "Unknown")
-                        .font(.subheadline)
+                        .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 .lineLimit(1)
 
-                // Row 3: To
                 if !msg.participants.isEmpty {
                     HStack(spacing: 0) {
                         Text("To: ")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.tertiary)
                         Text(msg.participants.map(\.name).joined(separator: ", "))
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.tertiary)
                     }
                     .lineLimit(1)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
 }

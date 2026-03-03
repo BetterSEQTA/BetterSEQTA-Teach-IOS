@@ -30,14 +30,14 @@ struct HomePlaceholderView: View {
             // Today's Lessons Section
             Section {
                 if viewModel.lessonsLoading {
-                    HStack {
+                    HStack(spacing: 12) {
                         ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Loading...")
+                        Text("Loading lessons…")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
                     .listRowBackground(Color.clear)
                 } else if let err = viewModel.lessonsError {
                     Text("Error: \(err)")
@@ -46,12 +46,22 @@ struct HomePlaceholderView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .listRowBackground(Color.clear)
                 } else if viewModel.todayLessons.isEmpty {
-                    Text("No lessons today")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .frame(minHeight: 44)
-                        .listRowBackground(Color.clear)
+                    HStack(spacing: 12) {
+                        Image(systemName: "calendar.badge.checkmark")
+                            .font(.title2)
+                            .foregroundStyle(.tertiary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("No lessons today")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Text("Check the timetable for other days")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 16)
+                    .listRowBackground(Color.clear)
                 } else {
                     ForEach(Array(viewModel.todayLessons.prefix(3))) { lesson in
                         if lesson.classunitId != nil {
@@ -70,27 +80,30 @@ struct HomePlaceholderView: View {
                 }
             } header: {
                 HStack {
-                    Text("Today's Lessons")
+                    Label("Today's Lessons", systemImage: "calendar.day")
                         .font(.headline)
                     Spacer()
-                    Button("See all") {
+                    Button {
                         selectedTab = .timetable
+                    } label: {
+                        Text("See all")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
                     }
-                    .font(.subheadline)
                 }
             }
 
             // Direqt Messages Section
             Section {
                 if viewModel.messagesLoading {
-                    HStack {
+                    HStack(spacing: 12) {
                         ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Loading...")
+                        Text("Loading messages…")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
+                    .padding(.vertical, 20)
                     .listRowBackground(Color.clear)
                 } else if let err = viewModel.messagesError {
                     Text("Error: \(err)")
@@ -99,12 +112,22 @@ struct HomePlaceholderView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                         .listRowBackground(Color.clear)
                 } else if viewModel.messages.isEmpty {
-                    Text("No messages")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .frame(minHeight: 44)
-                        .listRowBackground(Color.clear)
+                    HStack(spacing: 12) {
+                        Image(systemName: "tray")
+                            .font(.title2)
+                            .foregroundStyle(.tertiary)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("No messages")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                            Text("Your Direqt messages will appear here")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 16)
+                    .listRowBackground(Color.clear)
                 } else {
                     ForEach(Array(viewModel.messages.prefix(3))) { msg in
                         if let messageID = msg.messageID {
@@ -120,13 +143,16 @@ struct HomePlaceholderView: View {
                 }
             } header: {
                 HStack {
-                    Text("Direqt Messages")
+                    Label("Direqt Messages", systemImage: "bubble.left.and.bubble.right")
                         .font(.headline)
                     Spacer()
-                    Button("See all") {
+                    Button {
                         selectedTab = .messages
+                    } label: {
+                        Text("See all")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
                     }
-                    .font(.subheadline)
                 }
             }
         }
@@ -137,7 +163,7 @@ struct HomePlaceholderView: View {
 
     @ViewBuilder
     private func lessonRow(_ lesson: TeachLesson) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .center, spacing: 14) {
             Circle()
                 .fill(Color.green.opacity(0.1))
                 .frame(width: 48, height: 48)
@@ -146,14 +172,15 @@ struct HomePlaceholderView: View {
                         .font(.title3)
                         .foregroundStyle(.green)
                 }
-            
-            VStack(alignment: .leading, spacing: 6) {
+
+            VStack(alignment: .leading, spacing: 4) {
                 Text(lesson.description ?? lesson.code ?? "Lesson")
                     .font(.headline)
+                    .fontWeight(.semibold)
                     .foregroundStyle(.primary)
                     .lineLimit(2)
-                
-                HStack(spacing: 8) {
+
+                HStack(spacing: 6) {
                     if let period = lesson.period, !period.isEmpty {
                         Text(period)
                             .font(.caption)
@@ -165,7 +192,6 @@ struct HomePlaceholderView: View {
                     Text("\(lesson.from) – \(lesson.until)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-
                     if let room = lesson.room, !room.isEmpty {
                         Text("· \(room)")
                             .font(.caption)
@@ -174,12 +200,12 @@ struct HomePlaceholderView: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
     @ViewBuilder
     private func messageRow(_ msg: TeachMessage) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .center, spacing: 14) {
             Circle()
                 .fill(Color.blue.opacity(0.1))
                 .frame(width: 48, height: 48)
@@ -189,37 +215,37 @@ struct HomePlaceholderView: View {
                         .fontWeight(.semibold)
                         .foregroundStyle(.blue)
                 }
-            
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .top) {
+                .overlay(alignment: .topTrailing) {
+                    if !msg.read {
+                        Circle()
+                            .fill(.blue)
+                            .frame(width: 12, height: 12)
+                            .overlay(Circle().stroke(Color(.systemBackground), lineWidth: 2))
+                            .offset(x: 4, y: -4)
+                    }
+                }
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(alignment: .firstTextBaseline) {
                     Text(msg.sender ?? "Unknown")
-                        .font(.headline)
+                        .font(.subheadline)
+                        .fontWeight(msg.read ? .medium : .semibold)
                         .foregroundStyle(.primary)
                         .lineLimit(1)
                     Spacer()
                     if let date = msg.date {
                         Text(date, format: .dateTime.day().month().hour().minute())
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.secondary)
                     }
                 }
-
-                HStack(alignment: .bottom) {
-                    Text(msg.subject ?? "No subject")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                    Spacer()
-                    if !msg.read {
-                        Circle()
-                            .fill(.blue)
-                            .frame(width: 10, height: 10)
-                            .padding(.bottom, 4)
-                    }
-                }
+                Text(msg.subject ?? "No subject")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
             }
         }
-        .padding(.vertical, 8)
+        .padding(.vertical, 6)
     }
 
 }

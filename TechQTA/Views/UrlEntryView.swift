@@ -32,8 +32,8 @@ struct UrlEntryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
-                VStack(spacing: 12) {
+            VStack(spacing: 28) {
+                VStack(spacing: 20) {
                     Image(systemName: "link")
                         .font(.system(size: 34, weight: .semibold))
                         .foregroundStyle(.tint)
@@ -41,7 +41,8 @@ struct UrlEntryView: View {
 
                     VStack(alignment: .leading, spacing: 8) {
                         Text("School URL")
-                            .font(.headline)
+                            .font(.title3)
+                            .fontWeight(.bold)
 
                         Text("Enter your school's SEQTA Teach address. You'll log in in the next step, then tap Done.")
                             .font(.subheadline)
@@ -50,7 +51,7 @@ struct UrlEntryView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    VStack(alignment: .leading, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 8) {
                         TextField("school.seqta.com.au", text: $urlString)
                             .textFieldStyle(.roundedBorder)
                             .textInputAutocapitalization(.never)
@@ -68,11 +69,15 @@ struct UrlEntryView: View {
                             }
 
                         if let error = validationError {
-                            Text(error)
-                                .font(.caption)
-                                .foregroundStyle(.red)
+                            HStack(spacing: 6) {
+                                Image(systemName: "exclamationmark.circle.fill")
+                                    .font(.caption)
+                                Text(error)
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(.red)
                         } else {
-                            Text("Example: `teach.school.edu.au`")
+                            Text("Example: teach.school.edu.au")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -83,15 +88,18 @@ struct UrlEntryView: View {
                         sessionManager.startLogin(with: url)
                     } label: {
                         Text("Continue")
+                            .font(.headline)
+                            .fontWeight(.semibold)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
+                            .padding(.vertical, 16)
                     }
                     .buttonStyle(.borderedProminent)
                     .disabled(!isLoginEnabled)
                     .padding(.top, 4)
                 }
-                .padding(20)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                .padding(24)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
+                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
 
                 Spacer(minLength: 24)
             }

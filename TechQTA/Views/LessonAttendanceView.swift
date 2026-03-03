@@ -22,8 +22,13 @@ struct LessonAttendanceView: View {
     @State private var errorMessage: String?
     @State private var saveError: String?
     @State private var showStats = false
+    @State private var typePickerStudent: TeachAttendanceStudent?
 
     private let client = TeachAttendanceClient()
+
+    private var selectableTypes: [TeachAttendanceType] {
+        attendanceTypes.filter { $0.isReset != true && $0.code != "kiosk-zero" }
+    }
 
     private var lessonTimeDateTitle: String {
         let df = DateFormatter()
@@ -33,7 +38,11 @@ struct LessonAttendanceView: View {
         let df2 = DateFormatter()
         df2.dateFormat = "d MMM yyyy"
         let dateStr = df2.string(from: d)
-        return "\(dateStr), \(lesson.from) – \(lesson.until)"
+        let dateTime = "\(dateStr), \(lesson.from) – \(lesson.until)"
+        if let subject = lesson.description, !subject.isEmpty {
+            return "\(subject) · \(dateTime)"
+        }
+        return dateTime
     }
 
     var body: some View {
@@ -52,20 +61,35 @@ struct LessonAttendanceView: View {
                             Button {
                                 showStats = true
                             } label: {
-                                HStack {
-                                    Label("View attendance stats", systemImage: "chart.bar.fill")
-                                        .font(.subheadline)
+                                HStack(spacing: 12) {
+                                    Image(systemName: "chart.bar.fill")
+                                        .font(.title3)
+                                        .foregroundStyle(.tint)
+                                        .frame(width: 32, height: 32)
+                                        .background(Circle().fill(Color.accentColor.opacity(0.15)))
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("View attendance stats")
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                            .foregroundStyle(.primary)
+                                        Text("See percentages by student")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
                                     Spacer()
                                     Image(systemName: "chevron.right")
-                                        .font(.caption)
+                                        .font(.caption.weight(.semibold))
                                         .foregroundStyle(.tertiary)
                                 }
+                                .padding(.vertical, 4)
                             }
+                            .buttonStyle(.plain)
                         }
                     }
+
                     Section {
                         ForEach(students) { student in
-                            studentRow(student)
+                            studentRow(student, onLongPress: { typePickerStudent = student })
                                 .contentShape(Rectangle())
                                 .onTapGesture {
                                     cycleAttendance(for: student)
@@ -73,6 +97,18 @@ struct LessonAttendanceView: View {
                         }
                     } header: {
                         Text("Students")
+                    } footer: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "hand.tap.fill")
+                                .font(.caption2)
+                            Text("Tap to mark attendance")
+                            Text("•")
+                            Image(systemName: "hand.raised.fill")
+                                .font(.caption2)
+                            Text("Long press for more options")
+                        }
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     }
                 }
                 .listStyle(.insetGrouped)
@@ -112,6 +148,24 @@ struct LessonAttendanceView: View {
         } message: {
             Text(saveError ?? "")
         }
+        .sheet(item: $typePickerStudent) { student in
+            AttendanceTypePickerSheet(
+                types: selectableTypes,
+                studentName: (student.prefname ?? student.firstname) + " " + student.surname,
+                currentCode: effectiveCode(for: student),
+                onSelect: { code in
+                    pendingChanges[student.id] = code
+                    typePickerStudent = nil
+                },
+                onClear: {
+                    pendingChanges.removeValue(forKey: student.id)
+                    typePickerStudent = nil
+                },
+                onDismiss: { typePickerStudent = nil }
+            )
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     private func cycleAttendance(for student: TeachAttendanceStudent) {
@@ -150,7 +204,7 @@ struct LessonAttendanceView: View {
     }
 
     @ViewBuilder
-    private func studentRow(_ student: TeachAttendanceStudent) -> some View {
+    private func studentRow(_ student: TeachAttendanceStudent, onLongPress: @escaping () -> Void = {}) -> some View {
         HStack(alignment: .center, spacing: 14) {
             Circle()
                 .fill(Color.blue.opacity(0.1))
@@ -165,7 +219,7 @@ struct LessonAttendanceView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(student.prefname ?? student.firstname)
                     .font(.subheadline)
-                    .fontWeight(.medium)
+                    .fontWeight(.semibold)
                 Text(student.surname)
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -178,34 +232,43 @@ struct LessonAttendanceView: View {
 
             Spacer()
 
-            attendanceStatusBadge(for: student)
+            attendanceStatusBadge(for: student, onLongPress: onLongPress)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder
-    private func attendanceStatusBadge(for student: TeachAttendanceStudent) -> some View {
+    private func attendanceStatusBadge(for student: TeachAttendanceStudent, onLongPress: @escaping () -> Void) -> some View {
         let resolved = resolveAttendanceStatus(student)
-        if let resolved {
-            HStack(spacing: 4) {
-                Image(systemName: resolved.icon)
-                    .font(.caption)
-                Text(resolved.label)
-                    .font(.caption)
-                    .fontWeight(.medium)
+        Group {
+            if let resolved {
+                HStack(spacing: 6) {
+                    Image(systemName: resolved.icon)
+                        .font(.subheadline)
+                    Text(resolved.label)
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(statusColor(resolved.label).opacity(0.2)))
+                .foregroundStyle(statusColor(resolved.label))
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: "minus.circle")
+                        .font(.subheadline)
+                    Text("Not marked")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Capsule().fill(Color(.systemGray5)))
+                .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(Capsule().fill(statusColor(resolved.label).opacity(0.2)))
-            .foregroundStyle(statusColor(resolved.label))
-        } else {
-            HStack(spacing: 4) {
-                Image(systemName: "minus.circle")
-                    .font(.caption)
-                Text("—")
-                    .font(.caption)
-            }
-            .foregroundStyle(.tertiary)
+        }
+        .onLongPressGesture {
+            onLongPress()
         }
     }
 
