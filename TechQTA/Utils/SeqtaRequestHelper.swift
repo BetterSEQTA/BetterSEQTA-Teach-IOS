@@ -10,6 +10,7 @@ import Foundation
 enum SeqtaRequestError: Error {
     case invalidURL
     case invalidBody
+    case invalidResponse
 }
 
 /// Shared helper for SEQTA Teach API POST requests with JSESSIONID cookie.

@@ -42,9 +42,7 @@ struct HomePlaceholderView: View {
                 await sessionManager.sendHeartbeat()
             }
         }
-        .task(id: "\(sessionManager.session?.baseUrl.absoluteString ?? "")-\(sessionManager.staffId ?? 0)") {
-            await loadDashboardData()
-        }
+        .task { await loadDashboardData() }
     }
 
     @ViewBuilder
@@ -196,7 +194,15 @@ struct HomePlaceholderView: View {
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(Array(messages.prefix(3))) { msg in
-                    messageRow(msg)
+                    if let messageID = msg.messageID {
+                        NavigationLink {
+                            DireqtMessageDetailView(messageID: messageID)
+                        } label: {
+                            messageRow(msg)
+                        }
+                    } else {
+                        messageRow(msg)
+                    }
                 }
             }
         }

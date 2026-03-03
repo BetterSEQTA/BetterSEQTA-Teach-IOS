@@ -26,30 +26,15 @@ struct DireqtMessagesView: View {
                 ContentUnavailableView("No messages", systemImage: "bubble.left.and.bubble.right", description: Text("You're all caught up."))
             } else {
                 List(messages) { msg in
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 8) {
-                            Text(msg.sender ?? "Unknown")
-                                .font(.headline)
-                                .lineLimit(1)
-                            if !msg.read {
-                                Circle()
-                                    .fill(.blue)
-                                    .frame(width: 8, height: 8)
-                            }
-                            Spacer()
-                            if let date = msg.date {
-                                Text(date, format: .dateTime.day().month().hour().minute())
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                    if let messageID = msg.messageID {
+                        NavigationLink {
+                            DireqtMessageDetailView(messageID: messageID)
+                        } label: {
+                            messageRow(msg)
                         }
-
-                        Text(msg.subject ?? "No subject")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
+                    } else {
+                        messageRow(msg)
                     }
-                    .padding(.vertical, 6)
                 }
                 .listStyle(.insetGrouped)
                 .refreshable {
@@ -62,6 +47,33 @@ struct DireqtMessagesView: View {
         }
     }
 
+    @ViewBuilder
+    private func messageRow(_ msg: TeachMessage) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(msg.sender ?? "Unknown")
+                    .font(.headline)
+                    .lineLimit(1)
+                if !msg.read {
+                    Circle()
+                        .fill(.blue)
+                        .frame(width: 8, height: 8)
+                }
+                Spacer()
+                if let date = msg.date {
+                    Text(date, format: .dateTime.day().month().hour().minute())
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Text(msg.subject ?? "No subject")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .padding(.vertical, 6)
+    }
     private func load() async {
         guard let session = sessionManager.session else { return }
 
