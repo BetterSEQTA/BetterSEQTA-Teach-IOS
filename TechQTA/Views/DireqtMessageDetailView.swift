@@ -552,8 +552,19 @@ private struct AutoHeightWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
-        guard !context.coordinator.hasLoaded else { return }
-        context.coordinator.hasLoaded = true
+        let coordinator = context.coordinator
+
+        if coordinator.lastColorScheme != colorScheme {
+            coordinator.lastColorScheme = colorScheme
+            coordinator.hasLoaded = true
+            let rendered = wrapHTML(html, colorScheme: colorScheme)
+            webView.loadHTMLString(rendered, baseURL: nil)
+            return
+        }
+
+        guard !coordinator.hasLoaded else { return }
+        coordinator.hasLoaded = true
+        coordinator.lastColorScheme = colorScheme
         let rendered = wrapHTML(html, colorScheme: colorScheme)
         webView.loadHTMLString(rendered, baseURL: nil)
     }
@@ -564,6 +575,7 @@ private struct AutoHeightWebView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var hasLoaded = false
+        var lastColorScheme: ColorScheme?
         private var height: Binding<CGFloat>
 
         init(height: Binding<CGFloat>) {
@@ -591,8 +603,10 @@ private struct AutoHeightWebView: UIViewRepresentable {
     }
 
     private func wrapHTML(_ html: String, colorScheme: ColorScheme) -> String {
-        let textColor = colorScheme == .dark ? "#ffffff" : "#000000"
-        let linkColor = colorScheme == .dark ? "#8ab4ff" : "#0a84ff"
+        let isDark = colorScheme == .dark
+        let textColor = isDark ? "#ffffff" : "#000000"
+        let linkColor = isDark ? "#8ab4ff" : "#0a84ff"
+        let darkClass = isDark ? " class=\"dark\"" : ""
 
         return """
         <!doctype html>
@@ -600,14 +614,14 @@ private struct AutoHeightWebView: UIViewRepresentable {
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
             <style>
-              body { margin: 0; padding: 0; color: \(textColor); font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; }
+              body { margin: 0; padding: 0; color: \(textColor); font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; background: transparent; }
               a { color: \(linkColor); }
               img { max-width: 100%; height: auto; }
               blockquote.forward {
-                border-left: 3px solid #d1d5db;
+                border-left: 3px solid \(isDark ? "#555" : "#d1d5db");
                 padding-left: 12px;
                 margin: 12px 0;
-                color: #6b7280;
+                color: \(isDark ? "#aaa" : "#6b7280");
               }
               blockquote.forward .preamble {
                 margin-bottom: 8px;
@@ -622,10 +636,61 @@ private struct AutoHeightWebView: UIViewRepresentable {
               }
             </style>
           </head>
-          <body>
+          <body\(darkClass)>
             \(html)
           </body>
+          \(isDark ? Self.darkModeContrastScript : "")
         </html>
         """
     }
+
+    private static let darkModeContrastScript = """
+    <script>
+    (function() {
+      function luminance(r, g, b) {
+        var a = [r, g, b].map(function(v) {
+          v /= 255;
+          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
+      }
+
+      function parseColor(str) {
+        var m = str.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
+        if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] !== undefined ? parseFloat(m[4]) : 1 };
+        return null;
+      }
+
+      function hasExplicitBg(el) {
+        var inline = el.style.backgroundColor;
+        if (inline && inline !== '' && inline !== 'transparent' && inline !== 'rgba(0, 0, 0, 0)') return true;
+        if (el.getAttribute('bgcolor')) return true;
+        return false;
+      }
+
+      var els = document.body.querySelectorAll('*');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (!hasExplicitBg(el)) continue;
+
+        var bg = getComputedStyle(el).backgroundColor;
+        var c = parseColor(bg);
+        if (!c || c.a < 0.1) continue;
+
+        var lum = luminance(c.r, c.g, c.b);
+        if (lum > 0.4) {
+          el.style.color = '';
+          el.dataset.darkPreserved = '1';
+          var children = el.querySelectorAll('*');
+          for (var j = 0; j < children.length; j++) {
+            if (!hasExplicitBg(children[j])) {
+              children[j].style.color = '';
+              children[j].dataset.darkPreserved = '1';
+            }
+          }
+        }
+      }
+    })();
+    </script>
+    """
 }
