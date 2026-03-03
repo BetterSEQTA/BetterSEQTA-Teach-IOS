@@ -58,7 +58,6 @@ struct DireqtMessagesView: View {
         .fullScreenCover(isPresented: $showCompose) {
             ComposeMessageView(mode: .new)
         }
-        .toolbar(.hidden, for: .navigationBar)
     }
 
     // MARK: - Label Pills
@@ -149,11 +148,6 @@ struct DireqtMessagesView: View {
 
     private var messageListHeader: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Messages")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .padding(.horizontal)
-
             labelPills
         }
         .padding(.vertical, 12)

@@ -43,11 +43,7 @@ struct TabRootView: View {
                         DireqtMessageDetailView(messageID: messageID)
                     }
                     .navigationTitle("Messages")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbarTitleDisplayMode(.inline)
-            }
-            .safeAreaInset(edge: .top, spacing: -8) {
-                EmptyView()
+                    .navigationBarTitleDisplayMode(.large)
             }
             .tabItem {
                 Label("Messages", systemImage: "bubble.left.and.bubble.right")
@@ -78,11 +74,7 @@ struct TabRootView: View {
         NavigationStack {
             content()
                 .navigationTitle(title)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbarTitleDisplayMode(.inline)
-        }
-        .safeAreaInset(edge: .top, spacing: -8) {
-            EmptyView()
+                .navigationBarTitleDisplayMode(.large)
         }
     }
 }

@@ -78,7 +78,7 @@ struct SetupOnboardingView: View {
             }
         }
         .navigationTitle("Setup")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarTitleDisplayMode(.large)
     }
 
     @ViewBuilder

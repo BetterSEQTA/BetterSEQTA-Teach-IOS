@@ -59,7 +59,7 @@ struct ComposeMessageView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationTitle(navigationTitle)
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
@@ -328,7 +328,7 @@ private struct RecipientPickerView: View {
                 .listStyle(.plain)
             }
             .navigationTitle("Add Recipients")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .searchable(text: $viewModel.recipientSearchText, prompt: "Search recipients")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

@@ -53,8 +53,8 @@ struct TeachLoginWebView: View {
             .padding(12)
             .background(.regularMaterial)
         }
-        .navigationBarTitleDisplayMode(.inline)
         .navigationTitle(baseUrl.host ?? "SEQTA Teach")
+        .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
