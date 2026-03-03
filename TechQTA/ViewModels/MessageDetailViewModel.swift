@@ -36,8 +36,8 @@ final class MessageDetailViewModel: ObservableObject {
         let newStarred = !detail.starred
 
         self.detail = TeachMessageDetail(
-            id: detail.id, sender: detail.sender, subject: detail.subject,
-            body: detail.body, date: detail.date, read: detail.read,
+            id: detail.id, sender: detail.sender, senderId: detail.senderId, senderType: detail.senderType,
+            subject: detail.subject, body: detail.body, date: detail.date, read: detail.read,
             starred: newStarred, participants: detail.participants, files: detail.files
         )
 
@@ -66,14 +66,21 @@ final class MessageDetailViewModel: ObservableObject {
         let newRead = !detail.read
 
         self.detail = TeachMessageDetail(
-            id: detail.id, sender: detail.sender, subject: detail.subject,
-            body: detail.body, date: detail.date, read: newRead,
+            id: detail.id, sender: detail.sender, senderId: detail.senderId, senderType: detail.senderType,
+            subject: detail.subject, body: detail.body, date: detail.date, read: newRead,
             starred: detail.starred, participants: detail.participants, files: detail.files
         )
 
         Task {
             try? await client.markRead(session: session, ids: [detail.id], read: newRead)
         }
+    }
+
+    func downloadAttachment(file: TeachMessageFile, session: TeachSession?) async throws -> URL {
+        guard let session else {
+            throw URLError(.userAuthenticationRequired)
+        }
+        return try await client.downloadAttachment(session: session, file: file)
     }
 
     // MARK: - Private

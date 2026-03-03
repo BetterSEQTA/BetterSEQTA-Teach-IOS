@@ -49,6 +49,8 @@ struct TeachMessageFile: Identifiable {
 struct TeachMessageDetail {
     let id: Int
     let sender: String?
+    let senderId: Int?
+    let senderType: String?
     let subject: String?
     let body: String?
     let date: Date?
@@ -56,6 +58,31 @@ struct TeachMessageDetail {
     let starred: Bool
     let participants: [TeachMessageParticipant]
     let files: [TeachMessageFile]
+}
+
+// MARK: - Recipient models
+
+enum RecipientType: String {
+    case staff, student, tutor, contact
+}
+
+struct Recipient: Identifiable, Hashable {
+    let id: Int
+    let displayName: String
+    let type: RecipientType
+
+    func toParticipantDict() -> [String: Any] {
+        switch type {
+        case .staff:
+            return ["staff": true, "id": id]
+        case .student:
+            return ["student": true, "id": id]
+        case .tutor:
+            return ["tutor": true, "id": id]
+        case .contact:
+            return ["student": true, "id": id]
+        }
+    }
 }
 
 struct TeachMessagesClient {
@@ -143,6 +170,154 @@ struct TeachMessagesClient {
         return parseMessageDetail(payload)
     }
 
+    // MARK: - Recipient lookup
+
+    func fetchContacts(session: TeachSession) async throws -> [Recipient] {
+        let body: [String: Any] = ["mode": "coneqt"]
+        let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/json/contactIDs", body: body)
+        guard (200...299).contains(response.statusCode) else { return [] }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let payload = json?["payload"] as? [[String: Any]] ?? []
+        return payload.compactMap { dict in
+            guard let id = dict["id"] as? Int else { return nil }
+            let name = dict["xx_display"] as? String
+                ?? [dict["firstname"] as? String, dict["surname"] as? String]
+                    .compactMap { $0 }
+                    .joined(separator: " ")
+            guard !name.isEmpty else { return nil }
+            return Recipient(id: id, displayName: name, type: .contact)
+        }
+    }
+
+    func fetchStaff(session: TeachSession) async throws -> [Recipient] {
+        let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/json/ms/staff", body: [:])
+        guard (200...299).contains(response.statusCode) else { return [] }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let payload = json?["payload"] as? [String: Any]
+        let elements = payload?["elements"] as? [[String: Any]] ?? []
+        return elements.compactMap { dict in
+            guard let id = dict["xx_value"] as? Int,
+                  let name = dict["xx_display"] as? String else { return nil }
+            return Recipient(id: id, displayName: name, type: .staff)
+        }
+    }
+
+    func fetchStudents(session: TeachSession) async throws -> [Recipient] {
+        let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/json/ms/students", body: [:])
+        guard (200...299).contains(response.statusCode) else { return [] }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let payload = json?["payload"] as? [String: Any]
+        let elements = payload?["elements"] as? [[String: Any]] ?? []
+        return elements.compactMap { dict in
+            guard let id = dict["xx_value"] as? Int,
+                  let name = dict["xx_display"] as? String else { return nil }
+            return Recipient(id: id, displayName: name, type: .student)
+        }
+    }
+
+    func fetchTutors(session: TeachSession) async throws -> [Recipient] {
+        let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/json/ms/tutors", body: [:])
+        guard (200...299).contains(response.statusCode) else { return [] }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let payload = json?["payload"] as? [String: Any]
+        let elements = payload?["elements"] as? [[String: Any]] ?? []
+        return elements.compactMap { dict in
+            guard let id = dict["xx_value"] as? Int,
+                  let name = dict["xx_display"] as? String else { return nil }
+            return Recipient(id: id, displayName: name, type: .tutor)
+        }
+    }
+
+    // MARK: - Compose / Reply / Forward
+
+    func sendMessage(
+        session: TeachSession,
+        subject: String,
+        contents: String,
+        participants: [Recipient],
+        blind: Bool = false,
+        files: [String] = [],
+        inReplyTo: Int? = nil
+    ) async throws -> Int {
+        var body: [String: Any] = [
+            "subject": subject,
+            "contents": contents,
+            "participants": participants.map { $0.toParticipantDict() },
+            "blind": blind,
+            "files": files
+        ]
+        if let replyId = inReplyTo {
+            body["inReplyTo"] = replyId
+        }
+        let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/json/coneqtmessage/save", body: body)
+        guard (200...299).contains(response.statusCode) else {
+            throw SeqtaRequestError.invalidResponse
+        }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let payload = json?["payload"] as? [String: Any]
+        return payload?["id"] as? Int ?? 0
+    }
+
+    func fetchReplyMeta(session: TeachSession, messageID: Int) async throws -> [String: Any] {
+        let body: [String: Any] = ["action": "replymeta", "id": messageID]
+        let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/json/coneqtmessage/load", body: body)
+        guard (200...299).contains(response.statusCode) else { return [:] }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return json?["payload"] as? [String: Any] ?? [:]
+    }
+
+    func fetchReplyAllMeta(session: TeachSession, messageID: Int) async throws -> [String: Any] {
+        let body: [String: Any] = ["action": "replyallmeta", "id": messageID]
+        let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/json/coneqtmessage/load", body: body)
+        guard (200...299).contains(response.statusCode) else { return [:] }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return json?["payload"] as? [String: Any] ?? [:]
+    }
+
+    func fetchForwardMeta(session: TeachSession, messageID: Int) async throws -> [String: Any] {
+        let body: [String: Any] = ["action": "forwardmeta", "id": messageID]
+        let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/json/coneqtmessage/load", body: body)
+        guard (200...299).contains(response.statusCode) else { return [:] }
+        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        return json?["payload"] as? [String: Any] ?? [:]
+    }
+
+    func downloadAttachment(session: TeachSession, file: TeachMessageFile) async throws -> URL {
+        let baseString = session.baseUrl.absoluteString
+        let trimmed = baseString.hasSuffix("/") ? String(baseString.dropLast()) : baseString
+
+        var components = URLComponents(string: trimmed + "/seqta/ta/file/get")
+        components?.queryItems = [
+            URLQueryItem(name: "type", value: "message"),
+            URLQueryItem(name: "file", value: file.uuid)
+        ]
+
+        guard let url = components?.url else {
+            throw SeqtaRequestError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "GET"
+        request.setValue("JSESSIONID=\(session.jsessionId)", forHTTPHeaderField: "Cookie")
+
+        let (temporaryURL, response) = try await URLSession.shared.download(for: request)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200...299).contains(httpResponse.statusCode) else {
+            throw SeqtaRequestError.invalidResponse
+        }
+
+        let safeFilename = file.filename.replacingOccurrences(of: "/", with: "_")
+        let destinationURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(UUID().uuidString)-\(safeFilename)")
+
+        if FileManager.default.fileExists(atPath: destinationURL.path) {
+            try? FileManager.default.removeItem(at: destinationURL)
+        }
+        try FileManager.default.moveItem(at: temporaryURL, to: destinationURL)
+
+        return destinationURL
+    }
+
     private func parseMessage(_ raw: [String: Any]) -> TeachMessage? {
         let listId = raw["id"] as? Int
         let fallbackId = raw["messageID"] as? Int
@@ -171,6 +346,8 @@ struct TeachMessagesClient {
     private func parseMessageDetail(_ raw: [String: Any]) -> TeachMessageDetail {
         let id = raw["id"] as? Int ?? 0
         let sender = raw["sender"] as? String
+        let senderId = raw["sender_id"] as? Int
+        let senderType = raw["sender_type"] as? String
         let subject = raw["subject"] as? String
         let body = raw["contents"] as? String ?? raw["body"] as? String ?? raw["content"] as? String
         let read = (raw["read"] as? Int) == 1 || (raw["read"] as? Bool) == true
@@ -196,7 +373,7 @@ struct TeachMessagesClient {
             return TeachMessageFile(id: id, filename: filename, mimetype: mimetype, size: size, uuid: uuid)
         }
 
-        return TeachMessageDetail(id: id, sender: sender, subject: subject, body: body, date: date, read: read, starred: starred, participants: participants, files: files)
+        return TeachMessageDetail(id: id, sender: sender, senderId: senderId, senderType: senderType, subject: subject, body: body, date: date, read: read, starred: starred, participants: participants, files: files)
     }
 
     private func parseDate(_ dateStr: String?) -> Date? {

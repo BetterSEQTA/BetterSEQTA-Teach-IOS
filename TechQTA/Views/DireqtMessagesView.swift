@@ -3,8 +3,10 @@ import SwiftUI
 struct DireqtMessagesView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
     @StateObject private var viewModel = DireqtMessagesViewModel()
+    @State private var showCompose = false
 
     var body: some View {
+        ZStack(alignment: .bottomTrailing) {
         Group {
             if viewModel.isLoading && viewModel.messages.isEmpty {
                 ProgressView("Loading messages...")
@@ -31,6 +33,25 @@ struct DireqtMessagesView: View {
         }
         .task(id: sessionManager.session?.jsessionId) {
             await viewModel.loadIfNeeded(session: sessionManager.session)
+        }
+
+            // Floating compose button
+            Button {
+                showCompose = true
+            } label: {
+                Image(systemName: "square.and.pencil")
+                    .font(.title3)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .frame(width: 56, height: 56)
+                    .background(Circle().fill(Color.blue))
+                    .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+            }
+            .padding(.trailing, 20)
+            .padding(.bottom, 20)
+        }
+        .fullScreenCover(isPresented: $showCompose) {
+            ComposeMessageView(mode: .new)
         }
     }
 

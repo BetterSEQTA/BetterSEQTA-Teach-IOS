@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import QuickLook
 
 struct DireqtMessageDetailView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
@@ -9,6 +10,14 @@ struct DireqtMessageDetailView: View {
     let messageID: Int
 
     @StateObject private var viewModel = MessageDetailViewModel()
+    @State private var participantsExpanded = false
+    @State private var previewItemURL: URL?
+    @State private var isDownloadingAttachment = false
+    @State private var attachmentError: String?
+    @State private var showReplyComposer = false
+    @State private var showReplyAllComposer = false
+    @State private var showForwardComposer = false
+    @State private var webViewHeight: CGFloat = 120
 
     var body: some View {
         Group {
@@ -20,10 +29,7 @@ struct DireqtMessageDetailView: View {
             } else if let detail = viewModel.detail {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        if !detail.participants.isEmpty {
-                            participantPills(detail.participants)
-                        }
-
+                        // Subject and metadata
                         VStack(alignment: .leading, spacing: 4) {
                             Text(detail.subject ?? "No subject")
                                 .font(.title3)
@@ -45,18 +51,25 @@ struct DireqtMessageDetailView: View {
                             }
                         }
 
+                        // Participants below subject
+                        if !detail.participants.isEmpty {
+                            participantPills(detail.participants)
+                        }
+
                         Divider()
 
+                        // Message body
                         if let body = detail.body, !body.isEmpty {
-                            HTMLStringView(html: body, colorScheme: colorScheme)
+                            AutoHeightWebView(html: body, colorScheme: colorScheme, height: $webViewHeight)
                                 .frame(maxWidth: .infinity)
-                                .frame(minHeight: 120)
+                                .frame(height: max(webViewHeight, 120))
                         } else {
                             Text("No message content.")
                                 .font(.body)
                                 .foregroundStyle(.secondary)
                         }
 
+                        // Attachments
                         if !detail.files.isEmpty {
                             Divider()
                             attachmentsSection(detail.files)
@@ -95,6 +108,46 @@ struct DireqtMessageDetailView: View {
         .task(id: "\(sessionManager.session?.jsessionId ?? "")-\(messageID)") {
             await viewModel.loadIfNeeded(session: sessionManager.session, messageID: messageID)
         }
+        .fullScreenCover(isPresented: previewPresentedBinding) {
+            if let previewItemURL {
+                AttachmentQuickLookPreview(url: previewItemURL)
+                    .ignoresSafeArea()
+            }
+        }
+        .fullScreenCover(isPresented: $showReplyComposer) {
+            ComposeMessageView(
+                mode: .reply(messageID: messageID),
+                prefillRecipientNames: detailPrefillRecipientsForReply,
+                prefillParticipants: detailPrefillParticipantsForReply,
+                prefillSubject: viewModel.detail?.subject,
+                prefillBodyHTML: quotePrefillBody,
+                selfStaffId: sessionManager.staffId
+            )
+        }
+        .fullScreenCover(isPresented: $showReplyAllComposer) {
+            ComposeMessageView(
+                mode: .replyAll(messageID: messageID),
+                prefillRecipientNames: detailPrefillRecipientsForReplyAll,
+                prefillParticipants: detailPrefillParticipantsForReplyAll,
+                prefillSubject: viewModel.detail?.subject,
+                prefillBodyHTML: quotePrefillBody,
+                selfStaffId: sessionManager.staffId
+            )
+        }
+        .fullScreenCover(isPresented: $showForwardComposer) {
+            ComposeMessageView(
+                mode: .forward(messageID: messageID),
+                prefillRecipientNames: [],
+                prefillSubject: viewModel.detail?.subject,
+                prefillBodyHTML: quotePrefillBody,
+                selfStaffId: sessionManager.staffId
+            )
+        }
+        .alert("Couldn't open attachment", isPresented: attachmentErrorPresentedBinding) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(attachmentError ?? "Unknown error")
+        }
         .onChange(of: viewModel.didTrash) {
             if viewModel.didTrash {
                 dismiss()
@@ -118,21 +171,23 @@ struct DireqtMessageDetailView: View {
 
             Divider()
 
-            // Reply placeholders
-            Button { } label: {
+            Button {
+                showReplyComposer = true
+            } label: {
                 Label("Reply", systemImage: "arrowshape.turn.up.left")
             }
-            .disabled(true)
 
-            Button { } label: {
+            Button {
+                showReplyAllComposer = true
+            } label: {
                 Label("Reply All", systemImage: "arrowshape.turn.up.left.2")
             }
-            .disabled(true)
 
-            Button { } label: {
+            Button {
+                showForwardComposer = true
+            } label: {
                 Label("Forward", systemImage: "arrowshape.turn.up.right")
             }
-            .disabled(true)
 
             if !viewModel.labels.isEmpty {
                 Divider()
@@ -170,12 +225,12 @@ struct DireqtMessageDetailView: View {
         }
     }
 
-    // MARK: - Participant Pills
+    // MARK: - Participant Pills (expandable)
 
     @ViewBuilder
     private func participantPills(_ participants: [TeachMessageParticipant]) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
+            let pillContent = FlowLayout(spacing: 6) {
                 ForEach(participants) { participant in
                     HStack(spacing: 5) {
                         Image(systemName: participant.read ? "checkmark.circle.fill" : "circle.fill")
@@ -195,6 +250,37 @@ struct DireqtMessageDetailView: View {
                     )
                 }
             }
+
+            if participantsExpanded {
+                pillContent
+            } else {
+                pillContent
+                    .frame(maxHeight: 32, alignment: .topLeading)
+                    .clipped()
+                    .overlay(alignment: .trailing) {
+                        if participants.count > 3 {
+                            LinearGradient(
+                                colors: [Color(.systemBackground).opacity(0), Color(.systemBackground)],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                            .frame(width: 60)
+                        }
+                    }
+            }
+
+            if participants.count > 3 {
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) {
+                        participantsExpanded.toggle()
+                    }
+                } label: {
+                    Text(participantsExpanded ? "Show less" : "Show all (\(participants.count))")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                }
+                .padding(.top, 4)
+            }
         }
     }
 
@@ -207,28 +293,44 @@ struct DireqtMessageDetailView: View {
                 .font(.headline)
 
             ForEach(files) { file in
-                HStack(spacing: 12) {
-                    Image(systemName: iconForMime(file.mimetype))
-                        .font(.title3)
-                        .foregroundStyle(.blue)
-                        .frame(width: 36, height: 36)
-                        .background(Color.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+                Button {
+                    openAttachment(file)
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: iconForMime(file.mimetype))
+                            .font(.title3)
+                            .foregroundStyle(.blue)
+                            .frame(width: 36, height: 36)
+                            .background(Color.blue.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(file.filename)
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                            .lineLimit(1)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(file.filename)
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                                .lineLimit(1)
+                                .foregroundStyle(.primary)
 
-                        Text(formattedFileSize(file.size))
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            Text(formattedFileSize(file.size))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        if isDownloadingAttachment {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
                     }
-
-                    Spacer()
+                    .padding(10)
+                    .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10))
                 }
-                .padding(10)
-                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10))
+                .buttonStyle(.plain)
+                .disabled(isDownloadingAttachment)
             }
         }
     }
@@ -247,17 +349,198 @@ struct DireqtMessageDetailView: View {
         let mb = Double(kb) / 1024.0
         return String(format: "%.1f MB", mb)
     }
+
+    private var detailPrefillRecipientsForReply: [String] {
+        guard let detail = viewModel.detail else { return [] }
+        return [detail.sender].compactMap { $0 }
+    }
+
+    private var detailPrefillRecipientsForReplyAll: [String] {
+        guard let detail = viewModel.detail else { return [] }
+        var names = [detail.sender].compactMap { $0 }
+        names.append(contentsOf: detail.participants.map(\.name))
+        return Array(Set(names)) // selfStaffId exclusion handled by ComposeMessageViewModel
+    }
+
+    private var detailPrefillParticipantsForReply: [TeachMessageParticipant] {
+        guard let detail = viewModel.detail,
+              let senderId = detail.senderId,
+              let senderName = detail.sender else { return [] }
+        return [TeachMessageParticipant(
+            id: senderId,
+            name: senderName,
+            type: detail.senderType ?? "staff",
+            read: false
+        )]
+    }
+
+    private var detailPrefillParticipantsForReplyAll: [TeachMessageParticipant] {
+        guard let detail = viewModel.detail else { return [] }
+        var all = detail.participants
+        if let senderId = detail.senderId, let senderName = detail.sender {
+            let senderParticipant = TeachMessageParticipant(
+                id: senderId,
+                name: senderName,
+                type: detail.senderType ?? "staff",
+                read: false
+            )
+            if !all.contains(where: { $0.id == senderId }) {
+                all.append(senderParticipant)
+            }
+        }
+        return all
+    }
+
+    private var quotePrefillBody: String? {
+        guard let detail = viewModel.detail else { return nil }
+        let sender = detail.sender ?? "Unknown"
+        let dateText: String
+        if let date = detail.date {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "EEEE, d MMMM yyyy"
+            dateText = formatter.string(from: date)
+        } else {
+            dateText = ""
+        }
+        let original = detail.body ?? ""
+        return """
+        <br>\n<br>\n\u{00a0}
+        <blockquote class="forward">
+        \t<div class="preamble">
+        \t\t<div class="title">Original message</div>
+        \t\t<div class="date"><span class="label">Sent: </span><span class="value">\(dateText)</span></div>
+        \t\t<div class="sender"><span class="label">Sender: </span><span class="value">\(sender)</span></div>
+        \t</div>
+        \t<div class="body">\(original)</div>
+        </blockquote>
+        """
+    }
+
+    private var previewPresentedBinding: Binding<Bool> {
+        Binding(
+            get: { previewItemURL != nil },
+            set: { if !$0 { previewItemURL = nil } }
+        )
+    }
+
+    private var attachmentErrorPresentedBinding: Binding<Bool> {
+        Binding(
+            get: { attachmentError != nil },
+            set: { if !$0 { attachmentError = nil } }
+        )
+    }
+
+    private func openAttachment(_ file: TeachMessageFile) {
+        guard !isDownloadingAttachment else { return }
+        isDownloadingAttachment = true
+        attachmentError = nil
+
+        Task {
+            do {
+                let localURL = try await viewModel.downloadAttachment(file: file, session: sessionManager.session)
+                await MainActor.run {
+                    previewItemURL = localURL
+                    isDownloadingAttachment = false
+                }
+            } catch {
+                await MainActor.run {
+                    attachmentError = error.localizedDescription
+                    isDownloadingAttachment = false
+                }
+            }
+        }
+    }
 }
 
-// MARK: - HTML WebView
+private struct AttachmentQuickLookPreview: UIViewControllerRepresentable {
+    let url: URL
 
-private struct HTMLStringView: UIViewRepresentable {
+    func makeCoordinator() -> Coordinator {
+        Coordinator(url: url)
+    }
+
+    func makeUIViewController(context: Context) -> QLPreviewController {
+        let controller = QLPreviewController()
+        controller.dataSource = context.coordinator
+        return controller
+    }
+
+    func updateUIViewController(_ controller: QLPreviewController, context: Context) {
+        context.coordinator.url = url
+        controller.reloadData()
+    }
+
+    final class Coordinator: NSObject, QLPreviewControllerDataSource {
+        var url: URL
+
+        init(url: URL) {
+            self.url = url
+        }
+
+        func numberOfPreviewItems(in controller: QLPreviewController) -> Int {
+            1
+        }
+
+        func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
+            url as NSURL
+        }
+    }
+}
+
+// MARK: - Flow Layout for wrapping pills
+
+private struct FlowLayout: Layout {
+    var spacing: CGFloat
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = arrangeSubviews(proposal: proposal, subviews: subviews)
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = arrangeSubviews(proposal: proposal, subviews: subviews)
+        for (index, subview) in subviews.enumerated() {
+            guard index < result.positions.count else { break }
+            let position = result.positions[index]
+            subview.place(at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y), proposal: .unspecified)
+        }
+    }
+
+    private func arrangeSubviews(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
+        let maxWidth = proposal.width ?? .infinity
+        var positions: [CGPoint] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var maxX: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > maxWidth && x > 0 {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            positions.append(CGPoint(x: x, y: y))
+            rowHeight = max(rowHeight, size.height)
+            x += size.width + spacing
+            maxX = max(maxX, x - spacing)
+        }
+
+        return (CGSize(width: maxX, height: y + rowHeight), positions)
+    }
+}
+
+// MARK: - Auto-sizing HTML WebView
+
+private struct AutoHeightWebView: UIViewRepresentable {
     let html: String
     let colorScheme: ColorScheme
+    @Binding var height: CGFloat
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
-        config.defaultWebpagePreferences.allowsContentJavaScript = false
+        config.defaultWebpagePreferences.allowsContentJavaScript = true
         let webView = WKWebView(frame: .zero, configuration: config)
         webView.isOpaque = false
         webView.backgroundColor = .clear
@@ -269,15 +552,24 @@ private struct HTMLStringView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        guard !context.coordinator.hasLoaded else { return }
+        context.coordinator.hasLoaded = true
         let rendered = wrapHTML(html, colorScheme: colorScheme)
         webView.loadHTMLString(rendered, baseURL: nil)
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(height: $height)
     }
 
     final class Coordinator: NSObject, WKNavigationDelegate {
+        var hasLoaded = false
+        private var height: Binding<CGFloat>
+
+        init(height: Binding<CGFloat>) {
+            self.height = height
+        }
+
         func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             if navigationAction.navigationType == .linkActivated, let url = navigationAction.request.url {
                 UIApplication.shared.open(url)
@@ -289,9 +581,10 @@ private struct HTMLStringView: UIViewRepresentable {
 
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             webView.evaluateJavaScript("document.body.scrollHeight") { result, _ in
-                if let height = result as? CGFloat {
-                    webView.frame.size.height = height
-                    webView.invalidateIntrinsicContentSize()
+                if let h = result as? CGFloat {
+                    DispatchQueue.main.async {
+                        self.height.wrappedValue = h
+                    }
                 }
             }
         }
@@ -307,9 +600,26 @@ private struct HTMLStringView: UIViewRepresentable {
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
             <style>
-              body { margin: 0; padding: 0; font: -apple-system-body; color: \(textColor); font-family: -apple-system, Helvetica, Arial, sans-serif; }
+              body { margin: 0; padding: 0; color: \(textColor); font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; }
               a { color: \(linkColor); }
               img { max-width: 100%; height: auto; }
+              blockquote.forward {
+                border-left: 3px solid #d1d5db;
+                padding-left: 12px;
+                margin: 12px 0;
+                color: #6b7280;
+              }
+              blockquote.forward .preamble {
+                margin-bottom: 8px;
+                font-size: 13px;
+              }
+              blockquote.forward .preamble .title {
+                font-weight: 600;
+                margin-bottom: 4px;
+              }
+              blockquote.forward .preamble .label {
+                font-weight: 600;
+              }
             </style>
           </head>
           <body>
