@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct SetupOnboardingView: View {
-    @AppStorage("hasCompletedSetup") private var hasCompletedSetup = false
     @State private var currentPage = 0
+    let onComplete: () -> Void
 
     private let cards: [(title: String, icon: String, body: String)] = [
         (
@@ -51,7 +51,7 @@ struct SetupOnboardingView: View {
 
             if currentPage == cards.count - 1 {
                 Button {
-                    hasCompletedSetup = true
+                    onComplete()
                 } label: {
                     Text("Get Started")
                         .font(.headline)

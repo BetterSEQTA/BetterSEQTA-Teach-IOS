@@ -16,6 +16,7 @@ private let dateFormatter: DateFormatter = {
 
 struct HomePlaceholderView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
+    @Binding var selectedTab: AppTab
     @State private var hasTriggeredInitialHeartbeat = false
     @State private var todayLessons: [TeachLesson] = []
     @State private var messages: [TeachMessage] = []
@@ -33,14 +34,6 @@ struct HomePlaceholderView: View {
                 content(session: session)
             } else {
                 ProgressView()
-            }
-        }
-        .navigationTitle("SEQTA Teach")
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Logout") {
-                    sessionManager.logout()
-                }
             }
         }
         .task {
@@ -77,9 +70,9 @@ struct HomePlaceholderView: View {
                 .padding()
                 .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
 
-                todayLessonsSection(session: session)
+                todayLessonsPreview(session: session)
 
-                direqtMessagesSection(session: session)
+                direqtMessagesPreview(session: session)
 
                 Button {
                     Task { await sessionManager.sendHeartbeat() }
@@ -106,10 +99,18 @@ struct HomePlaceholderView: View {
     }
 
     @ViewBuilder
-    private func todayLessonsSection(session: TeachSession) -> some View {
+    private func todayLessonsPreview(session: TeachSession) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Today's Lessons")
-                .font(.headline)
+            HStack {
+                Text("Today's Lessons")
+                    .font(.headline)
+                Spacer()
+                Button("See all") {
+                    selectedTab = .timetable
+                }
+                .font(.subheadline)
+                .padding(.vertical, 8) // hit target
+            }
 
             if lessonsLoading {
                 HStack {
@@ -130,7 +131,7 @@ struct HomePlaceholderView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(todayLessons) { lesson in
+                ForEach(Array(todayLessons.prefix(3))) { lesson in
                     lessonRow(lesson)
                 }
             }
@@ -162,10 +163,18 @@ struct HomePlaceholderView: View {
     }
 
     @ViewBuilder
-    private func direqtMessagesSection(session: TeachSession) -> some View {
+    private func direqtMessagesPreview(session: TeachSession) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Direqt Messages")
-                .font(.headline)
+            HStack {
+                Text("Direqt Messages")
+                    .font(.headline)
+                Spacer()
+                Button("See all") {
+                    selectedTab = .messages
+                }
+                .font(.subheadline)
+                .padding(.vertical, 8) // hit target
+            }
 
             if messagesLoading {
                 HStack {
@@ -186,7 +195,7 @@ struct HomePlaceholderView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(messages) { msg in
+                ForEach(Array(messages.prefix(3))) { msg in
                     messageRow(msg)
                 }
             }

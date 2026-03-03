@@ -8,29 +8,40 @@
 import SwiftUI
 
 struct ContentView: View {
-    @AppStorage("hasCompletedSetup") private var hasCompletedSetup = false
+    @State private var setupCompleteForThisLogin = false
     @StateObject private var sessionManager = TeachSessionManager()
 
     var body: some View {
-        NavigationStack {
-            Group {
-                if !hasCompletedSetup {
-                    SetupOnboardingView()
-                } else if let session = sessionManager.session {
-                    if session.isAuthenticated {
-                        HomePlaceholderView()
-                    } else {
-                        TeachLoginWebView(
-                            baseUrl: session.baseUrl,
-                            onLoginSuccess: { sessionManager.completeLogin(with: $0) },
-                            onCancel: { sessionManager.cancelLogin() }
-                        )
+        Group {
+            if let session = sessionManager.session, session.isAuthenticated {
+                TabRootView()
+            } else {
+                NavigationStack {
+                    Group {
+                        if let session = sessionManager.session {
+                            TeachLoginWebView(
+                                baseUrl: session.baseUrl,
+                                onLoginSuccess: { sessionManager.completeLogin(with: $0) },
+                                onCancel: { sessionManager.cancelLogin() }
+                            )
+                        } else {
+                            if setupCompleteForThisLogin {
+                                UrlEntryView()
+                            } else {
+                                SetupOnboardingView {
+                                    setupCompleteForThisLogin = true
+                                }
+                            }
+                        }
                     }
-                } else {
-                    UrlEntryView()
                 }
             }
         }
         .environmentObject(sessionManager)
+        .onChange(of: sessionManager.session) { _, newValue in
+            if newValue == nil {
+                setupCompleteForThisLogin = false
+            }
+        }
     }
 }
