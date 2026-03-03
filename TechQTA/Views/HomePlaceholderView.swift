@@ -72,24 +72,6 @@ struct HomePlaceholderView: View {
 
                 direqtMessagesPreview(session: session)
 
-                Button {
-                    Task { await sessionManager.sendHeartbeat() }
-                } label: {
-                    if case .loading = sessionManager.heartbeatStatus {
-                        ProgressView()
-                            .progressViewStyle(.circular)
-                            .tint(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    } else {
-                        Text("Send Heartbeat")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                    }
-                }
-                .buttonStyle(.borderedProminent)
-                .disabled(heartbeatLoading)
-
                 Spacer(minLength: 24)
             }
             .padding()
@@ -265,11 +247,6 @@ struct HomePlaceholderView: View {
                 .font(.caption)
                 .foregroundStyle(.red)
         }
-    }
-
-    private var heartbeatLoading: Bool {
-        if case .loading = sessionManager.heartbeatStatus { return true }
-        return false
     }
 
     private func loadDashboardData() async {
