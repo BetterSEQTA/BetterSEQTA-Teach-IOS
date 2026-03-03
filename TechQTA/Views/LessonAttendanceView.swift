@@ -47,7 +47,7 @@ struct LessonAttendanceView: View {
                 ContentUnavailableView("No students", systemImage: "person.2", description: Text("No students in this class."))
             } else {
                 List {
-                    if lesson.isAdhoc, !summaryByStudent.isEmpty {
+                    if !summaryByStudent.isEmpty {
                         Section {
                             Button {
                                 showStats = true
@@ -255,9 +255,9 @@ struct LessonAttendanceView: View {
             let payload = try await client.fetchAttendanceLoad(session: session, date: date, classunitIds: classIds, isAdhoc: lesson.isAdhoc)
             students = client.parseStudents(from: payload)
 
-            if lesson.isAdhoc, !students.isEmpty {
+            if !students.isEmpty {
                 let studentIds = students.map(\.id)
-                summaryByStudent = try await client.fetchAttendanceSummary(session: session, date: date, studentIds: studentIds, classunitIds: [classunitId])
+                summaryByStudent = try await client.fetchAttendanceSummary(session: session, date: date, studentIds: studentIds, classunitIds: classIds, isAdhoc: lesson.isAdhoc)
             }
         } catch {
             errorMessage = error.localizedDescription

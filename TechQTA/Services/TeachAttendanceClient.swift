@@ -67,13 +67,13 @@ struct TeachAttendanceClient {
         }
     }
 
-    /// Fetch attendance summary (adhoc only). Call after fetchAttendanceLoad. Returns studentId -> (present, percent).
-    func fetchAttendanceSummary(session: TeachSession, date: String, studentIds: [Int], classunitIds: [Int]) async throws -> [Int: (present: Int, percent: Int)] {
+    /// Fetch attendance summary. Adhoc: mode "inclass". Timetabled: mode "inclass-count". Returns studentId -> (present, percent).
+    func fetchAttendanceSummary(session: TeachSession, date: String, studentIds: [Int], classunitIds: [Int], isAdhoc: Bool) async throws -> [Int: (present: Int, percent: Int)] {
         let body: [String: Any] = [
             "date": date,
             "students": studentIds,
             "classes": classunitIds,
-            "mode": "inclass"
+            "mode": isAdhoc ? "inclass" : "inclass-count"
         ]
         let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/json/attendance/summary", body: body)
         guard (200...299).contains(response.statusCode) else {
