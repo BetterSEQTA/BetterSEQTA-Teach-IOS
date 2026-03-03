@@ -11,10 +11,10 @@ enum AppTab: Hashable {
     case home
     case timetable
     case messages
+    case settings
 }
 
 struct TabRootView: View {
-    @EnvironmentObject private var sessionManager: TeachSessionManager
     @State private var selectedTab: AppTab = .home
 
     var body: some View {
@@ -22,11 +22,6 @@ struct TabRootView: View {
             NavigationStack {
                 HomePlaceholderView(selectedTab: $selectedTab)
                     .navigationTitle("Home")
-                    .toolbar {
-                        ToolbarItem(placement: .primaryAction) {
-                            Button("Logout") { sessionManager.logout() }
-                        }
-                    }
             }
             .tabItem {
                 Label("Home", systemImage: "house")
@@ -36,11 +31,6 @@ struct TabRootView: View {
             NavigationStack {
                 TimetableView()
                     .navigationTitle("Timetable")
-                    .toolbar {
-                        ToolbarItem(placement: .primaryAction) {
-                            Button("Logout") { sessionManager.logout() }
-                        }
-                    }
             }
             .tabItem {
                 Label("Timetable", systemImage: "calendar")
@@ -50,16 +40,20 @@ struct TabRootView: View {
             NavigationStack {
                 DireqtMessagesView()
                     .navigationTitle("Messages")
-                    .toolbar {
-                        ToolbarItem(placement: .primaryAction) {
-                            Button("Logout") { sessionManager.logout() }
-                        }
-                    }
             }
             .tabItem {
                 Label("Messages", systemImage: "bubble.left.and.bubble.right")
             }
             .tag(AppTab.messages)
+
+            NavigationStack {
+                SettingsView()
+                    .navigationTitle("Settings")
+            }
+            .tabItem {
+                Label("Settings", systemImage: "gearshape")
+            }
+            .tag(AppTab.settings)
         }
     }
 }

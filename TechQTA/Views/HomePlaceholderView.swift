@@ -17,7 +17,6 @@ private let dateFormatter: DateFormatter = {
 struct HomePlaceholderView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
     @Binding var selectedTab: AppTab
-    @State private var hasTriggeredInitialHeartbeat = false
     @State private var todayLessons: [TeachLesson] = []
     @State private var messages: [TeachMessage] = []
     @State private var lessonsLoading = false
@@ -30,47 +29,21 @@ struct HomePlaceholderView: View {
 
     var body: some View {
         Group {
-            if let session = sessionManager.session {
-                content(session: session)
+            if sessionManager.session != nil {
+                content
             } else {
                 ProgressView()
-            }
-        }
-        .task {
-            if sessionManager.session != nil, !hasTriggeredInitialHeartbeat {
-                hasTriggeredInitialHeartbeat = true
-                await sessionManager.sendHeartbeat()
             }
         }
         .task { await loadDashboardData() }
     }
 
-    @ViewBuilder
-    private func content(session: TeachSession) -> some View {
+    private var content: some View {
         ScrollView {
             VStack(spacing: 24) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(session.hostDisplay, systemImage: "globe")
-                        .font(.headline)
+                todayLessonsPreview
 
-                    HStack {
-                        Text("JSESSIONID:")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text(session.jsessionId.isEmpty ? "None" : "Present")
-                            .font(.caption)
-                            .fontWeight(.medium)
-                    }
-
-                    heartbeatStatusView
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding()
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
-
-                todayLessonsPreview(session: session)
-
-                direqtMessagesPreview(session: session)
+                direqtMessagesPreview
 
                 Spacer(minLength: 24)
             }
@@ -79,7 +52,7 @@ struct HomePlaceholderView: View {
     }
 
     @ViewBuilder
-    private func todayLessonsPreview(session: TeachSession) -> some View {
+    private var todayLessonsPreview: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Today's Lessons")
@@ -143,7 +116,7 @@ struct HomePlaceholderView: View {
     }
 
     @ViewBuilder
-    private func direqtMessagesPreview(session: TeachSession) -> some View {
+    private var direqtMessagesPreview: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Direqt Messages")
@@ -217,36 +190,6 @@ struct HomePlaceholderView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.vertical, 6)
-    }
-
-    @ViewBuilder
-    private var heartbeatStatusView: some View {
-        switch sessionManager.heartbeatStatus {
-        case .idle:
-            Text("Last heartbeat: —")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        case .loading:
-            HStack {
-                ProgressView()
-                    .scaleEffect(0.8)
-                Text("Sending heartbeat...")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        case .success(let date):
-            Text("Last heartbeat: \(date, format: .dateTime)")
-                .font(.caption)
-                .foregroundStyle(.green)
-        case .unauthorized:
-            Text("Session expired (401/403)")
-                .font(.caption)
-                .foregroundStyle(.red)
-        case .error(let msg):
-            Text("Error: \(msg)")
-                .font(.caption)
-                .foregroundStyle(.red)
-        }
     }
 
     private func loadDashboardData() async {
