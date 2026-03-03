@@ -54,23 +54,7 @@ struct TimetableView: View {
                 ContentUnavailableView("No lessons", systemImage: "calendar", description: Text("No lessons found for this day."))
             } else {
                 List(viewModel.lessons) { lesson in
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(lesson.description ?? "Lesson")
-                            .font(.headline)
-                            .lineLimit(2)
-                        HStack(spacing: 6) {
-                            Text("\(lesson.from) – \(lesson.until)")
-                            if let room = lesson.room, !room.isEmpty {
-                                Text("· \(room)")
-                            }
-                            if lesson.isAdhoc {
-                                Text("· Adhoc")
-                            }
-                        }
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 6)
+                    lessonRow(lesson)
                 }
                 .listStyle(.insetGrouped)
             }
@@ -78,6 +62,46 @@ struct TimetableView: View {
         .task(id: AppDateFormatters.isoYMD.string(from: viewModel.selectedDate) + "-\(sessionManager.staffId ?? 0)-\(sessionManager.session?.jsessionId ?? "")") {
             await viewModel.load(sessionManager: sessionManager)
         }
+    }
+
+    @ViewBuilder
+    private func lessonRow(_ lesson: TeachLesson) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Circle()
+                .fill(Color.green.opacity(0.1))
+                .frame(width: 48, height: 48)
+                .overlay {
+                    Image(systemName: "book.fill")
+                        .font(.title3)
+                        .foregroundStyle(.green)
+                }
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(lesson.description ?? lesson.code ?? "Lesson")
+                    .font(.headline)
+                    .foregroundStyle(.primary)
+                    .lineLimit(2)
+
+                HStack(spacing: 8) {
+                    Text("\(lesson.from) – \(lesson.until)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if let room = lesson.room, !room.isEmpty {
+                        Text("· \(room)")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+
+                    if lesson.isAdhoc {
+                        Text("· Untimetabled lesson")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
+        }
+        .padding(.vertical, 4)
     }
 }
 

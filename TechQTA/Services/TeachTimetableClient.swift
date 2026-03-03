@@ -83,6 +83,9 @@ struct TeachTimetableClient {
     private func processTimetableData(timetablePayload: [String: Any], adhocPayload: [String: Any], dateFrom: String, dateTo: String) -> [TeachLesson] {
         var lessons: [TeachLesson] = []
 
+        // Build lookup: adhoc classunit id -> description, code, staff
+        let adhocClassUnits = buildAdhocClassUnitLookup(adhocPayload)
+
         if let timetabled = timetablePayload["timetabled"] as? [String: Any],
            let periods = timetabled["periods"] as? [[String: Any]] {
             for period in periods {
@@ -91,7 +94,7 @@ struct TeachTimetableClient {
                           key >= dateFrom, key <= dateTo,
                           let lessonArray = value as? [[String: Any]] else { continue }
                     for (idx, lesson) in lessonArray.enumerated() {
-                        if let l = parseLesson(lesson, index: idx, isAdhoc: false) {
+                        if let l = parseLesson(lesson, index: idx, isAdhoc: false, adhocClassUnits: nil) {
                             lessons.append(l)
                         }
                     }
@@ -102,7 +105,7 @@ struct TeachTimetableClient {
         if let adhocList = adhocPayload["adhoc"] as? [[String: Any]] {
             for (idx, adhoc) in adhocList.enumerated() {
                 guard let dateStr = adhoc["date"] as? String, dateStr >= dateFrom, dateStr <= dateTo else { continue }
-                if let l = parseLesson(adhoc, index: idx, isAdhoc: true) {
+                if let l = parseLesson(adhoc, index: idx, isAdhoc: true, adhocClassUnits: adhocClassUnits) {
                     lessons.append(l)
                 }
             }
@@ -120,26 +123,59 @@ struct TeachTimetableClient {
         return unique.sorted { $0.from < $1.from }
     }
 
-    private func parseLesson(_ raw: [String: Any], index: Int, isAdhoc: Bool) -> TeachLesson? {
+    private struct AdhocClassUnitInfo {
+        let description: String?
+        let code: String?
+        let staff: String?
+    }
+
+    private func buildAdhocClassUnitLookup(_ adhocPayload: [String: Any]) -> [Int: AdhocClassUnitInfo] {
+        var map: [Int: AdhocClassUnitInfo] = [:]
+        guard let units = adhocPayload["adhoc_classunits"] as? [[String: Any]] else { return map }
+        for unit in units {
+            guard let id = unit["id"] as? Int else { continue }
+            let desc = unit["description"] as? String
+            let code = unit["code"] as? String ?? unit["name"] as? String
+            let staff = unit["staff"] as? String
+            map[id] = AdhocClassUnitInfo(description: desc, code: code, staff: staff)
+        }
+        return map
+    }
+
+    private func parseLesson(_ raw: [String: Any], index: Int, isAdhoc: Bool, adhocClassUnits: [Int: AdhocClassUnitInfo]?) -> TeachLesson? {
         let from = (raw["from"] as? String).map { String($0.prefix(5)) } ?? ""
         let until = (raw["until"] as? String).map { String($0.prefix(5)) } ?? ""
         let id = (raw["id"] as? Int).map { "\($0)" } ?? "\(index)-\(from)-\(until)"
         let programmeID = raw["programmeID"] as? Int ?? raw["programme"] as? Int
         let metaID = raw["metaID"] as? Int ?? raw["metaclass"] as? Int
-        let staff: String? = {
-            if let s = raw["staff"] as? String { return s }
-            if let n = raw["staff"] as? Int { return "\(n)" }
-            return nil
-        }()
+
+        var description: String?
+        var code: String?
+        var staff: String?
+        var room: String?
+
+        if isAdhoc, let classunitId = raw["classunit"] as? Int, let units = adhocClassUnits, let info = units[classunitId] {
+            description = info.description
+            code = info.code
+            staff = info.staff
+        }
+        description = description ?? raw["description"] as? String
+        code = code ?? raw["code"] as? String
+        if staff == nil {
+            if let s = raw["staff"] as? String { staff = s }
+            else if let n = raw["staff"] as? Int { staff = "\(n)" }
+        }
+        room = raw["room_code"] as? String ?? raw["room"] as? String ?? (raw["room"] as? Int).map { "\($0)" }
+
         return TeachLesson(
             id: id,
             from: from,
             until: until,
-            description: raw["description"] as? String,
-            code: raw["code"] as? String,
+            description: description,
+            code: code,
             staff: staff,
-            room: raw["room"] as? String,
-            classunit: raw["classunit"] as? String,
+            room: room,
+            classunit: (raw["classunit"] as? Int).map { "\($0)" } ?? raw["classunit"] as? String,
             attendance: raw["attendance"],
             programmeID: programmeID,
             metaID: metaID,

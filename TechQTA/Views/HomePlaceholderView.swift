@@ -135,7 +135,7 @@ struct HomePlaceholderView: View {
                 }
             
             VStack(alignment: .leading, spacing: 6) {
-                Text(lesson.description ?? "Lesson")
+                Text(lesson.description ?? lesson.code ?? "Lesson")
                     .font(.headline)
                     .foregroundStyle(.primary)
                     .lineLimit(2)
