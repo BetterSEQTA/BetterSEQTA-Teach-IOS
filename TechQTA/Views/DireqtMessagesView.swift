@@ -53,7 +53,7 @@ struct DireqtMessagesView: View {
             }
             .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
             .padding(.horizontal, 20)
-            .padding(.bottom, 20)
+            .padding(.bottom, 8)
         }
         .fullScreenCover(isPresented: $showCompose) {
             ComposeMessageView(mode: .new)

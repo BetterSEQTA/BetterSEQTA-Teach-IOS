@@ -17,6 +17,7 @@ struct TeachLesson: Identifiable {
     let staff: String?
     let room: String?
     let classunit: String?
+    let classunitId: Int?
     let attendance: Any?
     let programmeID: Int?
     let metaID: Int?
@@ -168,6 +169,7 @@ struct TeachTimetableClient {
         }
         room = raw["room_code"] as? String ?? raw["room"] as? String ?? (raw["room"] as? Int).map { "\($0)" }
         let period = raw["period"] as? String
+        let classunitId = raw["classunit"] as? Int
 
         return TeachLesson(
             id: id,
@@ -178,7 +180,8 @@ struct TeachTimetableClient {
             code: code,
             staff: staff,
             room: room,
-            classunit: (raw["classunit"] as? Int).map { "\($0)" } ?? raw["classunit"] as? String,
+            classunit: classunitId.map { "\($0)" } ?? (raw["classunit"] as? String),
+            classunitId: classunitId,
             attendance: raw["attendance"],
             programmeID: programmeID,
             metaID: metaID,

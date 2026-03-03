@@ -54,7 +54,18 @@ struct TimetableView: View {
                 ContentUnavailableView("No lessons", systemImage: "calendar", description: Text("No lessons found for this day."))
             } else {
                 List(viewModel.lessons) { lesson in
-                    lessonRow(lesson)
+                    if lesson.classunitId != nil {
+                        NavigationLink {
+                            LessonAttendanceView(
+                                lesson: lesson,
+                                date: AppDateFormatters.isoYMD.string(from: viewModel.selectedDate)
+                            )
+                        } label: {
+                            lessonRow(lesson)
+                        }
+                    } else {
+                        lessonRow(lesson)
+                    }
                 }
                 .listStyle(.insetGrouped)
             }

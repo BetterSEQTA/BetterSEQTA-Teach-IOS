@@ -54,7 +54,18 @@ struct HomePlaceholderView: View {
                         .listRowBackground(Color.clear)
                 } else {
                     ForEach(Array(viewModel.todayLessons.prefix(3))) { lesson in
-                        lessonRow(lesson)
+                        if lesson.classunitId != nil {
+                            NavigationLink {
+                                LessonAttendanceView(
+                                    lesson: lesson,
+                                    date: AppDateFormatters.isoYMD.string(from: Date())
+                                )
+                            } label: {
+                                lessonRow(lesson)
+                            }
+                        } else {
+                            lessonRow(lesson)
+                        }
                     }
                 }
             } header: {
