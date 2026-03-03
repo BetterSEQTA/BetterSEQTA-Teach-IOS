@@ -24,19 +24,25 @@ struct ContentView: View {
                                 onLoginSuccess: { sessionManager.completeLogin(with: $0) },
                                 onCancel: { sessionManager.cancelLogin() }
                             )
+                            .transition(.move(edge: .bottom))
                         } else {
                             if setupCompleteForThisLogin {
                                 UrlEntryView()
+                                    .transition(.opacity)
                             } else {
                                 SetupOnboardingView {
-                                    setupCompleteForThisLogin = true
+                                    withAnimation {
+                                        setupCompleteForThisLogin = true
+                                    }
                                 }
+                                .transition(.opacity)
                             }
                         }
                     }
                 }
             }
         }
+
         .environmentObject(sessionManager)
         .onChange(of: sessionManager.session) { _, newValue in
             if newValue == nil {

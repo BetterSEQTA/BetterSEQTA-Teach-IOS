@@ -30,17 +30,22 @@ struct SettingsView: View {
                         heartbeatStatusView
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    .padding(20)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .shadow(color: Color.black.opacity(0.05), radius: 10, x: 0, y: 4)
 
                     Button(role: .destructive) {
                         sessionManager.logout()
                     } label: {
                         Text("Logout")
+                            .font(.headline)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
+                            .padding(.vertical, 12)
                     }
                     .buttonStyle(.borderedProminent)
+                    .tint(.red)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .shadow(color: Color.red.opacity(0.2), radius: 8, x: 0, y: 4)
                 } else {
                     Text("Not logged in")
                         .font(.caption)
@@ -50,6 +55,7 @@ struct SettingsView: View {
                 Spacer(minLength: 24)
             }
             .padding()
+            .padding(.top, 12)
         }
         .task(id: sessionManager.session?.jsessionId) {
             if sessionManager.session != nil {

@@ -58,7 +58,11 @@ struct TabRootView: View {
         NavigationStack {
             content()
                 .navigationTitle(title)
-                .navigationBarTitleDisplayMode(.inline)
+                .navigationBarTitleDisplayMode(.large)
+                .toolbarTitleDisplayMode(.large)
+        }
+        .safeAreaInset(edge: .top, spacing: -8) {
+            EmptyView()
         }
     }
 }

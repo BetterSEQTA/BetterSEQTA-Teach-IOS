@@ -33,6 +33,7 @@ struct DireqtMessagesView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .contentMargins(.top, 0, for: .scrollContent)
                 .refreshable {
                     await viewModel.refresh(session: sessionManager.session)
                 }
@@ -45,30 +46,47 @@ struct DireqtMessagesView: View {
 
     @ViewBuilder
     private func messageRow(_ msg: TeachMessage) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                Text(msg.sender ?? "Unknown")
-                    .font(.headline)
-                    .lineLimit(1)
-                if !msg.read {
-                    Circle()
-                        .fill(.blue)
-                        .frame(width: 8, height: 8)
+        HStack(alignment: .top, spacing: 14) {
+            Circle()
+                .fill(Color.blue.opacity(0.1))
+                .frame(width: 48, height: 48)
+                .overlay {
+                    Text(String((msg.sender ?? "U").prefix(1)))
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.blue)
                 }
-                Spacer()
-                if let date = msg.date {
-                    Text(date, format: .dateTime.day().month().hour().minute())
-                        .font(.caption)
+            
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .top) {
+                    Text(msg.sender ?? "Unknown")
+                        .font(.headline)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+                    Spacer()
+                    if let date = msg.date {
+                        Text(date, format: .dateTime.day().month().hour().minute())
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                HStack(alignment: .bottom) {
+                    Text(msg.subject ?? "No subject")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                    Spacer()
+                    if !msg.read {
+                        Circle()
+                            .fill(.blue)
+                            .frame(width: 10, height: 10)
+                            .padding(.bottom, 4)
+                    }
                 }
             }
-
-            Text(msg.subject ?? "No subject")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .lineLimit(2)
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
 }
 
