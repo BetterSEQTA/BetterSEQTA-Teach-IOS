@@ -9,23 +9,19 @@ import SwiftUI
 
 struct DireqtMessagesView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
-    @State private var messages: [TeachMessage] = []
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-
-    private let client = TeachMessagesClient()
+    @StateObject private var viewModel = DireqtMessagesViewModel()
 
     var body: some View {
         Group {
-            if isLoading {
+            if viewModel.isLoading {
                 ProgressView("Loading messages…")
                     .padding()
-            } else if let errorMessage {
+            } else if let errorMessage = viewModel.errorMessage {
                 ContentUnavailableView("Messages unavailable", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
-            } else if messages.isEmpty {
+            } else if viewModel.messages.isEmpty {
                 ContentUnavailableView("No messages", systemImage: "bubble.left.and.bubble.right", description: Text("You're all caught up."))
             } else {
-                List(messages) { msg in
+                List(viewModel.messages) { msg in
                     if let messageID = msg.messageID {
                         NavigationLink {
                             DireqtMessageDetailView(messageID: messageID)
@@ -38,12 +34,12 @@ struct DireqtMessagesView: View {
                 }
                 .listStyle(.insetGrouped)
                 .refreshable {
-                    await load()
+                    await viewModel.refresh(session: sessionManager.session)
                 }
             }
         }
-        .task {
-            await load()
+        .task(id: sessionManager.session?.jsessionId) {
+            await viewModel.loadIfNeeded(session: sessionManager.session)
         }
     }
 
@@ -73,19 +69,6 @@ struct DireqtMessagesView: View {
                 .lineLimit(2)
         }
         .padding(.vertical, 6)
-    }
-    private func load() async {
-        guard let session = sessionManager.session else { return }
-
-        isLoading = true
-        errorMessage = nil
-        do {
-            messages = try await client.fetchMessages(session: session, limit: 50)
-        } catch {
-            errorMessage = error.localizedDescription
-            messages = []
-        }
-        isLoading = false
     }
 }
 

@@ -7,20 +7,16 @@ struct DireqtMessageDetailView: View {
 
     let messageID: Int
 
-    @State private var detail: TeachMessageDetail?
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-
-    private let client = TeachMessagesClient()
+    @StateObject private var viewModel = MessageDetailViewModel()
 
     var body: some View {
         Group {
-            if isLoading && detail == nil {
+            if viewModel.isLoading && viewModel.detail == nil {
                 ProgressView("Loading message…")
                     .padding()
-            } else if let errorMessage, detail == nil {
+            } else if let errorMessage = viewModel.errorMessage, viewModel.detail == nil {
                 ContentUnavailableView("Message unavailable", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
-            } else if let detail {
+            } else if let detail = viewModel.detail {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         VStack(alignment: .leading, spacing: 4) {
@@ -108,26 +104,9 @@ struct DireqtMessageDetailView: View {
                 )
             }
         }
-        .task {
-            await load()
+        .task(id: "\(sessionManager.session?.jsessionId ?? "")-\(messageID)") {
+            await viewModel.loadIfNeeded(session: sessionManager.session, messageID: messageID)
         }
-    }
-
-    private func load() async {
-        guard let session = sessionManager.session else {
-            errorMessage = "You're not logged in."
-            return
-        }
-
-        isLoading = true
-        errorMessage = nil
-        do {
-            detail = try await client.fetchMessageDetail(session: session, id: messageID)
-        } catch {
-            errorMessage = error.localizedDescription
-            detail = nil
-        }
-        isLoading = false
     }
 
     private func isProbablyHTML(_ text: String) -> Bool {

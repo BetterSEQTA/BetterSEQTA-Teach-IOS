@@ -19,41 +19,46 @@ struct TabRootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack {
+            tabContainer(title: "Home") {
                 HomePlaceholderView(selectedTab: $selectedTab)
-                    .navigationTitle("Home")
             }
             .tabItem {
                 Label("Home", systemImage: "house")
             }
             .tag(AppTab.home)
 
-            NavigationStack {
+            tabContainer(title: "Timetable") {
                 TimetableView()
-                    .navigationTitle("Timetable")
             }
             .tabItem {
                 Label("Timetable", systemImage: "calendar")
             }
             .tag(AppTab.timetable)
 
-            NavigationStack {
+            tabContainer(title: "Messages") {
                 DireqtMessagesView()
-                    .navigationTitle("Messages")
             }
             .tabItem {
                 Label("Messages", systemImage: "bubble.left.and.bubble.right")
             }
             .tag(AppTab.messages)
 
-            NavigationStack {
+            tabContainer(title: "Settings") {
                 SettingsView()
-                    .navigationTitle("Settings")
             }
             .tabItem {
                 Label("Settings", systemImage: "gearshape")
             }
             .tag(AppTab.settings)
+        }
+    }
+
+    @ViewBuilder
+    private func tabContainer<Content: View>(title: String, @ViewBuilder content: () -> Content) -> some View {
+        NavigationStack {
+            content()
+                .navigationTitle(title)
+                .navigationBarTitleDisplayMode(.inline)
         }
     }
 }

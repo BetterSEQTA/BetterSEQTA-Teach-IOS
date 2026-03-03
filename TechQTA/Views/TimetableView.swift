@@ -7,27 +7,15 @@
 
 import SwiftUI
 
-private let timetableDateFormatter: DateFormatter = {
-    let f = DateFormatter()
-    f.dateFormat = "yyyy-MM-dd"
-    f.locale = Locale(identifier: "en_US_POSIX")
-    return f
-}()
-
 struct TimetableView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
-    @State private var selectedDate = Date()
-    @State private var lessons: [TeachLesson] = []
-    @State private var isLoading = false
-    @State private var errorMessage: String?
-
-    private let client = TeachTimetableClient()
+    @StateObject private var viewModel = TimetableViewModel()
 
     var body: some View {
         VStack(spacing: 12) {
             HStack(spacing: 12) {
                 Button {
-                    selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: selectedDate) ?? selectedDate
+                    viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: viewModel.selectedDate) ?? viewModel.selectedDate
                 } label: {
                     Image(systemName: "chevron.left")
                         .frame(width: 44, height: 44)
@@ -35,14 +23,14 @@ struct TimetableView: View {
 
                 DatePicker(
                     "Date",
-                    selection: $selectedDate,
+                    selection: $viewModel.selectedDate,
                     displayedComponents: .date
                 )
                 .labelsHidden()
                 .datePickerStyle(.compact)
 
                 Button {
-                    selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: selectedDate) ?? selectedDate
+                    viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: viewModel.selectedDate) ?? viewModel.selectedDate
                 } label: {
                     Image(systemName: "chevron.right")
                         .frame(width: 44, height: 44)
@@ -52,20 +40,20 @@ struct TimetableView: View {
             }
             .padding(.horizontal)
 
-            if isLoading {
+            if viewModel.isLoading {
                 ProgressView("Loading timetable…")
                     .padding()
                 Spacer()
-            } else if let errorMessage {
+            } else if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
                     .font(.caption)
                     .foregroundStyle(.red)
                     .padding()
                 Spacer()
-            } else if lessons.isEmpty {
+            } else if viewModel.lessons.isEmpty {
                 ContentUnavailableView("No lessons", systemImage: "calendar", description: Text("No lessons found for this day."))
             } else {
-                List(lessons) { lesson in
+                List(viewModel.lessons) { lesson in
                     VStack(alignment: .leading, spacing: 6) {
                         Text(lesson.description ?? "Lesson")
                             .font(.headline)
@@ -87,34 +75,9 @@ struct TimetableView: View {
                 .listStyle(.insetGrouped)
             }
         }
-        .task(id: timetableDateFormatter.string(from: selectedDate) + "-\(sessionManager.staffId ?? 0)") {
-            await load()
+        .task(id: AppDateFormatters.isoYMD.string(from: viewModel.selectedDate) + "-\(sessionManager.staffId ?? 0)-\(sessionManager.session?.jsessionId ?? "")") {
+            await viewModel.load(sessionManager: sessionManager)
         }
-    }
-
-    private func load() async {
-        guard let session = sessionManager.session else { return }
-
-        isLoading = true
-        errorMessage = nil
-        lessons = []
-
-        if sessionManager.staffId == nil {
-            await sessionManager.fetchStaffIdIfNeeded()
-        }
-        guard let staffId = sessionManager.staffId else {
-            errorMessage = "Could not load staff ID."
-            isLoading = false
-            return
-        }
-
-        let dateString = timetableDateFormatter.string(from: selectedDate)
-        do {
-            lessons = try await client.fetchLessons(session: session, staffId: staffId, dateFrom: dateString, dateTo: dateString)
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-        isLoading = false
     }
 }
 

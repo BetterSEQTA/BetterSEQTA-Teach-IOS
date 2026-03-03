@@ -7,25 +7,10 @@
 
 import SwiftUI
 
-private let dateFormatter: DateFormatter = {
-    let f = DateFormatter()
-    f.dateFormat = "yyyy-MM-dd"
-    f.locale = Locale(identifier: "en_US_POSIX")
-    return f
-}()
-
 struct HomePlaceholderView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
     @Binding var selectedTab: AppTab
-    @State private var todayLessons: [TeachLesson] = []
-    @State private var messages: [TeachMessage] = []
-    @State private var lessonsLoading = false
-    @State private var messagesLoading = false
-    @State private var lessonsError: String?
-    @State private var messagesError: String?
-
-    private let timetableClient = TeachTimetableClient()
-    private let messagesClient = TeachMessagesClient()
+    @StateObject private var viewModel = HomeDashboardViewModel()
 
     var body: some View {
         Group {
@@ -35,7 +20,9 @@ struct HomePlaceholderView: View {
                 ProgressView()
             }
         }
-        .task { await loadDashboardData() }
+        .task(id: sessionManager.session?.jsessionId) {
+            await viewModel.loadIfNeeded(sessionManager: sessionManager)
+        }
     }
 
     private var content: some View {
@@ -65,7 +52,7 @@ struct HomePlaceholderView: View {
                 .padding(.vertical, 8) // hit target
             }
 
-            if lessonsLoading {
+            if viewModel.lessonsLoading {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
@@ -75,16 +62,16 @@ struct HomePlaceholderView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-            } else if let err = lessonsError {
+            } else if let err = viewModel.lessonsError {
                 Text("Error: \(err)")
                     .font(.caption)
                     .foregroundStyle(.red)
-            } else if todayLessons.isEmpty {
+            } else if viewModel.todayLessons.isEmpty {
                 Text("No lessons today.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(Array(todayLessons.prefix(3))) { lesson in
+                ForEach(Array(viewModel.todayLessons.prefix(3))) { lesson in
                     lessonRow(lesson)
                 }
             }
@@ -129,7 +116,7 @@ struct HomePlaceholderView: View {
                 .padding(.vertical, 8) // hit target
             }
 
-            if messagesLoading {
+            if viewModel.messagesLoading {
                 HStack {
                     ProgressView()
                         .scaleEffect(0.8)
@@ -139,16 +126,16 @@ struct HomePlaceholderView: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding()
-            } else if let err = messagesError {
+            } else if let err = viewModel.messagesError {
                 Text("Error: \(err)")
                     .font(.caption)
                     .foregroundStyle(.red)
-            } else if messages.isEmpty {
+            } else if viewModel.messages.isEmpty {
                 Text("No messages.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(Array(messages.prefix(3))) { msg in
+                ForEach(Array(viewModel.messages.prefix(3))) { msg in
                     if let messageID = msg.messageID {
                         NavigationLink {
                             DireqtMessageDetailView(messageID: messageID)
@@ -192,43 +179,4 @@ struct HomePlaceholderView: View {
         .padding(.vertical, 6)
     }
 
-    private func loadDashboardData() async {
-        guard let session = sessionManager.session else { return }
-
-        let today = dateFormatter.string(from: Date())
-
-        lessonsLoading = true
-        lessonsError = nil
-        if let staffId = sessionManager.staffId {
-            do {
-                todayLessons = try await timetableClient.fetchLessons(session: session, staffId: staffId, dateFrom: today, dateTo: today)
-            } catch {
-                lessonsError = error.localizedDescription
-                todayLessons = []
-            }
-        } else {
-            await sessionManager.fetchStaffIdIfNeeded()
-            if let staffId = sessionManager.staffId {
-                do {
-                    todayLessons = try await timetableClient.fetchLessons(session: session, staffId: staffId, dateFrom: today, dateTo: today)
-                } catch {
-                    lessonsError = error.localizedDescription
-                    todayLessons = []
-                }
-            } else {
-                lessonsError = "Could not load staff ID"
-            }
-        }
-        lessonsLoading = false
-
-        messagesLoading = true
-        messagesError = nil
-        do {
-            messages = try await messagesClient.fetchMessages(session: session, limit: 5)
-        } catch {
-            messagesError = error.localizedDescription
-            messages = []
-        }
-        messagesLoading = false
-    }
 }
