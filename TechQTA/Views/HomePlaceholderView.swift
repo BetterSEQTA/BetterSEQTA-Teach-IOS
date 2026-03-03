@@ -1,0 +1,299 @@
+//
+//  HomePlaceholderView.swift
+//  TechQTA
+//
+//  Created by Aden Lindsay on 3/3/2026.
+//
+
+import SwiftUI
+
+private let dateFormatter: DateFormatter = {
+    let f = DateFormatter()
+    f.dateFormat = "yyyy-MM-dd"
+    f.locale = Locale(identifier: "en_US_POSIX")
+    return f
+}()
+
+struct HomePlaceholderView: View {
+    @EnvironmentObject private var sessionManager: TeachSessionManager
+    @State private var hasTriggeredInitialHeartbeat = false
+    @State private var todayLessons: [TeachLesson] = []
+    @State private var messages: [TeachMessage] = []
+    @State private var lessonsLoading = false
+    @State private var messagesLoading = false
+    @State private var lessonsError: String?
+    @State private var messagesError: String?
+
+    private let timetableClient = TeachTimetableClient()
+    private let messagesClient = TeachMessagesClient()
+
+    var body: some View {
+        Group {
+            if let session = sessionManager.session {
+                content(session: session)
+            } else {
+                ProgressView()
+            }
+        }
+        .navigationTitle("SEQTA Teach")
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Logout") {
+                    sessionManager.logout()
+                }
+            }
+        }
+        .task {
+            if sessionManager.session != nil, !hasTriggeredInitialHeartbeat {
+                hasTriggeredInitialHeartbeat = true
+                await sessionManager.sendHeartbeat()
+            }
+        }
+        .task(id: "\(sessionManager.session?.baseUrl.absoluteString ?? "")-\(sessionManager.staffId ?? 0)") {
+            await loadDashboardData()
+        }
+    }
+
+    @ViewBuilder
+    private func content(session: TeachSession) -> some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label(session.hostDisplay, systemImage: "globe")
+                        .font(.headline)
+
+                    HStack {
+                        Text("JSESSIONID:")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(session.jsessionId.isEmpty ? "None" : "Present")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                    }
+
+                    heartbeatStatusView
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+
+                todayLessonsSection(session: session)
+
+                direqtMessagesSection(session: session)
+
+                Button {
+                    Task { await sessionManager.sendHeartbeat() }
+                } label: {
+                    if case .loading = sessionManager.heartbeatStatus {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    } else {
+                        Text("Send Heartbeat")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(heartbeatLoading)
+
+                Spacer(minLength: 24)
+            }
+            .padding()
+        }
+    }
+
+    @ViewBuilder
+    private func todayLessonsSection(session: TeachSession) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Today's Lessons")
+                .font(.headline)
+
+            if lessonsLoading {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Loading...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+            } else if let err = lessonsError {
+                Text("Error: \(err)")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else if todayLessons.isEmpty {
+                Text("No lessons today.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(todayLessons) { lesson in
+                    lessonRow(lesson)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder
+    private func lessonRow(_ lesson: TeachLesson) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(lesson.description ?? "Lesson")
+                .font(.subheadline)
+                .fontWeight(.medium)
+            HStack {
+                Text("\(lesson.from) – \(lesson.until)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let room = lesson.room, !room.isEmpty {
+                    Text("· \(room)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
+    }
+
+    @ViewBuilder
+    private func direqtMessagesSection(session: TeachSession) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Direqt Messages")
+                .font(.headline)
+
+            if messagesLoading {
+                HStack {
+                    ProgressView()
+                        .scaleEffect(0.8)
+                    Text("Loading...")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+            } else if let err = messagesError {
+                Text("Error: \(err)")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            } else if messages.isEmpty {
+                Text("No messages.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(messages) { msg in
+                    messageRow(msg)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    @ViewBuilder
+    private func messageRow(_ msg: TeachMessage) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(msg.sender ?? "Unknown")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                if !msg.read {
+                    Circle()
+                        .fill(.blue)
+                        .frame(width: 6, height: 6)
+                }
+            }
+            Text(msg.subject ?? "No subject")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let date = msg.date {
+                Text(date, format: .dateTime.day().month().year().hour().minute())
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 6)
+    }
+
+    @ViewBuilder
+    private var heartbeatStatusView: some View {
+        switch sessionManager.heartbeatStatus {
+        case .idle:
+            Text("Last heartbeat: —")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        case .loading:
+            HStack {
+                ProgressView()
+                    .scaleEffect(0.8)
+                Text("Sending heartbeat...")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        case .success(let date):
+            Text("Last heartbeat: \(date, format: .dateTime)")
+                .font(.caption)
+                .foregroundStyle(.green)
+        case .unauthorized:
+            Text("Session expired (401/403)")
+                .font(.caption)
+                .foregroundStyle(.red)
+        case .error(let msg):
+            Text("Error: \(msg)")
+                .font(.caption)
+                .foregroundStyle(.red)
+        }
+    }
+
+    private var heartbeatLoading: Bool {
+        if case .loading = sessionManager.heartbeatStatus { return true }
+        return false
+    }
+
+    private func loadDashboardData() async {
+        guard let session = sessionManager.session else { return }
+
+        let today = dateFormatter.string(from: Date())
+
+        lessonsLoading = true
+        lessonsError = nil
+        if let staffId = sessionManager.staffId {
+            do {
+                todayLessons = try await timetableClient.fetchLessons(session: session, staffId: staffId, dateFrom: today, dateTo: today)
+            } catch {
+                lessonsError = error.localizedDescription
+                todayLessons = []
+            }
+        } else {
+            await sessionManager.fetchStaffIdIfNeeded()
+            if let staffId = sessionManager.staffId {
+                do {
+                    todayLessons = try await timetableClient.fetchLessons(session: session, staffId: staffId, dateFrom: today, dateTo: today)
+                } catch {
+                    lessonsError = error.localizedDescription
+                    todayLessons = []
+                }
+            } else {
+                lessonsError = "Could not load staff ID"
+            }
+        }
+        lessonsLoading = false
+
+        messagesLoading = true
+        messagesError = nil
+        do {
+            messages = try await messagesClient.fetchMessages(session: session, limit: 5)
+        } catch {
+            messagesError = error.localizedDescription
+            messages = []
+        }
+        messagesLoading = false
+    }
+}
