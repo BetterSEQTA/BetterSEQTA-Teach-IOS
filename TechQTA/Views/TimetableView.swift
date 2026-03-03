@@ -83,6 +83,14 @@ struct TimetableView: View {
                     .lineLimit(2)
 
                 HStack(spacing: 8) {
+                    if let period = lesson.period, !period.isEmpty {
+                        Text(period)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("·")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
                     Text("\(lesson.from) – \(lesson.until)")
                         .font(.caption)
                         .foregroundStyle(.secondary)

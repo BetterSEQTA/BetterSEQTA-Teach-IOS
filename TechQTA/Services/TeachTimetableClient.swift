@@ -11,6 +11,7 @@ struct TeachLesson: Identifiable {
     let id: String
     let from: String
     let until: String
+    let period: String?
     let description: String?
     let code: String?
     let staff: String?
@@ -166,11 +167,13 @@ struct TeachTimetableClient {
             else if let n = raw["staff"] as? Int { staff = "\(n)" }
         }
         room = raw["room_code"] as? String ?? raw["room"] as? String ?? (raw["room"] as? Int).map { "\($0)" }
+        let period = raw["period"] as? String
 
         return TeachLesson(
             id: id,
             from: from,
             until: until,
+            period: period,
             description: description,
             code: code,
             staff: staff,

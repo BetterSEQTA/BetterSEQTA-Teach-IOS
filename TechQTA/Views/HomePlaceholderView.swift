@@ -50,7 +50,8 @@ struct HomePlaceholderView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
-                        .listRowBackground(Color.white)
+                        .frame(minHeight: 44)
+                        .listRowBackground(Color.clear)
                 } else {
                     ForEach(Array(viewModel.todayLessons.prefix(3))) { lesson in
                         lessonRow(lesson)
@@ -91,6 +92,7 @@ struct HomePlaceholderView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
+                        .frame(minHeight: 44)
                         .listRowBackground(Color.clear)
                 } else {
                     ForEach(Array(viewModel.messages.prefix(3))) { msg in
@@ -141,10 +143,18 @@ struct HomePlaceholderView: View {
                     .lineLimit(2)
                 
                 HStack(spacing: 8) {
+                    if let period = lesson.period, !period.isEmpty {
+                        Text(period)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text("·")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
                     Text("\(lesson.from) – \(lesson.until)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    
+
                     if let room = lesson.room, !room.isEmpty {
                         Text("· \(room)")
                             .font(.caption)
