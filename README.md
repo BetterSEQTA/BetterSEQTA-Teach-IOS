@@ -18,10 +18,8 @@ It sits on top of your existing SEQTA Teach site – you log in the same way you
 
 - **Direqt messages**
   - Inbox‑style list of messages with sender, subject, and time.
-  - Full detail view that can show both plain text and rich HTML messages.
 
 - **Guided login**
-  - Short setup cards explain how login works and what’s happening behind the scenes.
   - You enter your school’s SEQTA Teach URL, sign in as normal in a secure in‑app browser, then tap **Done** when you’re in.
 
 ## How login and security work (in plain terms)
