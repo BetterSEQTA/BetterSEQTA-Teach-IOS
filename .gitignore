@@ -1,3 +1,10 @@
-# Xcode user-specific data
-*.xcodeproj/project.xcworkspace/xcuserdata/
-*.xcodeproj/xcuserdata/
+# API documentation and HAR files
+api/
+
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcuserdata/
+
+# macOS
+.DS_Store

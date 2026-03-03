@@ -30,9 +30,55 @@ final class DireqtMessagesViewModel: ObservableObject {
     private let client: TeachMessagesClient
     private var loadedSessionID: String?
     private var searchTask: Task<Void, Never>?
+    private var stateChangeObserver: NSObjectProtocol?
 
     init(client: TeachMessagesClient = TeachMessagesClient()) {
         self.client = client
+        setupStateObserver()
+    }
+    
+    deinit {
+        if let observer = stateChangeObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+    }
+    
+    private func setupStateObserver() {
+        stateChangeObserver = NotificationCenter.default.addObserver(
+            forName: .messageStateChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let change = notification.userInfo?["change"] as? MessageStateChange else { return }
+            Task { @MainActor in
+                self?.handleStateChange(change)
+            }
+        }
+    }
+    
+    private func handleStateChange(_ change: MessageStateChange) {
+        switch change {
+        case .read(let messageID, let isRead):
+            if let idx = messages.firstIndex(where: { $0.messageID == messageID }) {
+                messages[idx].read = isRead
+            }
+            
+        case .starred(let messageID, let isStarred):
+            if isStarred {
+                starredIDs.insert(messageID)
+            } else {
+                starredIDs.remove(messageID)
+            }
+            objectWillChange.send()
+            
+        case .trashed(let messageID):
+            messages.removeAll { $0.messageID == messageID }
+            starredIDs.remove(messageID)
+            
+        case .moved(let messageID, _):
+            // Remove from current view since it moved to a different label
+            messages.removeAll { $0.messageID == messageID }
+        }
     }
 
     func loadIfNeeded(session: TeachSession?) async {
@@ -126,6 +172,19 @@ final class DireqtMessagesViewModel: ObservableObject {
         }
     }
 
+    func restore(_ message: TeachMessage, session: TeachSession?) {
+        guard let session, let msgID = message.messageID else { return }
+
+        messages.removeAll { $0.id == message.id }
+
+        Task {
+            try? await client.moveMessage(session: session, ids: [msgID], label: "inbox")
+            if let updatedLabels = try? await client.fetchLabels(session: session) {
+                labels = updatedLabels
+            }
+        }
+    }
+
     // MARK: - Private
 
     private func loadAll(session: TeachSession) async {
@@ -171,6 +230,9 @@ final class DireqtMessagesViewModel: ObservableObject {
                 starredIDs.insert(mid)
             }
         }
+        // Seed last-seen IDs so background poll doesn't re-notify for these
+        let currentIDs = messages.map { $0.id }
+        UserDefaults.standard.set(currentIDs, forKey: "lastSeenMessageIDs")
     }
 
     private func reset() {

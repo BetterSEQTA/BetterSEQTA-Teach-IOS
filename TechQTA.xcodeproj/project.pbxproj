@@ -396,9 +396,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"TechQTA/Preview Content\"";
-				DEVELOPMENT_TEAM = ZP493BMS27;
+				DEVELOPMENT_TEAM = 5949S6UQCX;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "TechQTA-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "BetterSEQTA Teach";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -411,7 +412,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.adenmgb.TechQTA;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sethburkart.TechQTA;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -427,9 +428,10 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"TechQTA/Preview Content\"";
-				DEVELOPMENT_TEAM = ZP493BMS27;
+				DEVELOPMENT_TEAM = 5949S6UQCX;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "TechQTA-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "BetterSEQTA Teach";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -442,7 +444,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.adenmgb.TechQTA;
+				PRODUCT_BUNDLE_IDENTIFIER = com.sethburkart.TechQTA;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;

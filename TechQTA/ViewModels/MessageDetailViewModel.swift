@@ -41,6 +41,8 @@ final class MessageDetailViewModel: ObservableObject {
             starred: newStarred, participants: detail.participants, files: detail.files
         )
 
+        MessageStateNotifier.shared.post(.starred(messageID: detail.id, isStarred: newStarred))
+
         Task {
             try? await client.toggleStar(session: session, ids: [detail.id], starred: newStarred)
         }
@@ -48,6 +50,7 @@ final class MessageDetailViewModel: ObservableObject {
 
     func trash(session: TeachSession?) {
         guard let session, let detail else { return }
+        MessageStateNotifier.shared.post(.trashed(messageID: detail.id))
         Task {
             try? await client.moveMessage(session: session, ids: [detail.id], label: "trash")
             didTrash = true
@@ -56,6 +59,7 @@ final class MessageDetailViewModel: ObservableObject {
 
     func moveToLabel(_ label: String, session: TeachSession?) {
         guard let session, let detail else { return }
+        MessageStateNotifier.shared.post(.moved(messageID: detail.id, toLabel: label))
         Task {
             try? await client.moveMessage(session: session, ids: [detail.id], label: label)
         }
@@ -70,6 +74,8 @@ final class MessageDetailViewModel: ObservableObject {
             subject: detail.subject, body: detail.body, date: detail.date, read: newRead,
             starred: detail.starred, participants: detail.participants, files: detail.files
         )
+
+        MessageStateNotifier.shared.post(.read(messageID: detail.id, isRead: newRead))
 
         Task {
             try? await client.markRead(session: session, ids: [detail.id], read: newRead)
@@ -94,6 +100,9 @@ final class MessageDetailViewModel: ObservableObject {
             async let labelsResult = client.fetchLabels(session: session)
             detail = try await detailResult
             labels = (try? await labelsResult) ?? []
+            
+            // Opening a message marks it as read on the server, notify the list
+            MessageStateNotifier.shared.post(.read(messageID: messageID, isRead: true))
         } catch {
             errorMessage = error.localizedDescription
             detail = nil

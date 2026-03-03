@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct ContentView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var setupCompleteForThisLogin = false
     @StateObject private var sessionManager = TeachSessionManager()
 
@@ -47,6 +48,19 @@ struct ContentView: View {
         .onChange(of: sessionManager.session) { _, newValue in
             if newValue == nil {
                 setupCompleteForThisLogin = false
+            }
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                BackgroundPollManager.shared.startForegroundPolling()
+            case .background:
+                BackgroundPollManager.shared.stopForegroundPolling()
+                BackgroundPollManager.shared.scheduleAppRefresh()
+            case .inactive:
+                break
+            @unknown default:
+                break
             }
         }
     }

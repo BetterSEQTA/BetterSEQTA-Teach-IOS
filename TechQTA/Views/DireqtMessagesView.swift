@@ -7,52 +7,58 @@ struct DireqtMessagesView: View {
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-        Group {
-            if viewModel.isLoading && viewModel.messages.isEmpty {
-                ProgressView("Loading messages...")
-                    .padding()
-            } else if let errorMessage = viewModel.errorMessage, viewModel.messages.isEmpty {
-                ContentUnavailableView("Messages unavailable", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
-            } else {
-                messageList
+            Group {
+                if viewModel.isLoading && viewModel.messages.isEmpty {
+                    ProgressView("Loading messages...")
+                        .padding()
+                } else if let errorMessage = viewModel.errorMessage, viewModel.messages.isEmpty {
+                    ContentUnavailableView("Messages unavailable", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
+                } else {
+                    messageList
+                }
             }
-        }
-        .safeAreaInset(edge: .top) {
-            labelPills
-                .padding(.bottom, 8)
-                .background(.bar)
-        }
-        .searchable(
-            text: $viewModel.searchText,
-            placement: .navigationBarDrawer(displayMode: .always),
-            prompt: "Search"
-        )
-        .scrollDismissesKeyboard(.interactively)
-        .onChange(of: viewModel.searchText) {
-            viewModel.searchDebounced(session: sessionManager.session)
-        }
-        .task(id: sessionManager.session?.jsessionId) {
-            await viewModel.loadIfNeeded(session: sessionManager.session)
-        }
+            .scrollDismissesKeyboard(.interactively)
+            .onChange(of: viewModel.searchText) {
+                viewModel.searchDebounced(session: sessionManager.session)
+            }
+            .task(id: sessionManager.session?.jsessionId) {
+                await viewModel.loadIfNeeded(session: sessionManager.session)
+            }
 
-            // Floating compose button
-            Button {
-                showCompose = true
-            } label: {
-                Image(systemName: "square.and.pencil")
-                    .font(.title3)
-                    .fontWeight(.semibold)
-                    .foregroundStyle(.white)
-                    .frame(width: 56, height: 56)
-                    .background(Circle().fill(Color.blue))
-                    .shadow(color: .black.opacity(0.15), radius: 8, y: 4)
+            // Floating search + compose
+            HStack(spacing: 10) {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    TextField("Search", text: $viewModel.searchText)
+                        .font(.subheadline)
+                }
+                .padding(.horizontal, 12)
+                .frame(height: 44)
+                .background(Capsule().fill(.ultraThinMaterial))
+                .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
+
+                Button {
+                    showCompose = true
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.white)
+                        .frame(width: 56, height: 56)
+                        .background(Circle().fill(.ultraThinMaterial))
+                        .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
+                }
             }
-            .padding(.trailing, 20)
+            .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+            .padding(.horizontal, 20)
             .padding(.bottom, 20)
         }
         .fullScreenCover(isPresented: $showCompose) {
             ComposeMessageView(mode: .new)
         }
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     // MARK: - Label Pills
@@ -100,8 +106,8 @@ struct DireqtMessagesView: View {
                                     )
                             }
                         }
-                        .padding(.horizontal, (isSelected || item.alwaysShowLabel) ? 16 : 12)
-                        .padding(.vertical, 8)
+                        .padding(.horizontal, (isSelected || item.alwaysShowLabel) ? 18 : 14)
+                        .padding(.vertical, 10)
                         .background(
                             Capsule()
                                 .fill(isSelected ? Color.blue : Color(.systemGray5))
@@ -141,28 +147,57 @@ struct DireqtMessagesView: View {
 
     // MARK: - Message List
 
+    private var messageListHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Messages")
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .padding(.horizontal)
+
+            labelPills
+        }
+        .padding(.vertical, 12)
+    }
+
     private var messageList: some View {
-        Group {
+        VStack(spacing: 0) {
+            messageListHeader
+
             if viewModel.displayedMessages.isEmpty {
-                ContentUnavailableView(
-                    "No messages",
-                    systemImage: "tray",
-                    description: Text(viewModel.searchText.isEmpty ? "You're all caught up." : "No results for \"\(viewModel.searchText)\".")
-                )
+                ScrollView {
+                    ContentUnavailableView(
+                        "No messages",
+                        systemImage: "tray",
+                        description: Text(viewModel.searchText.isEmpty ? "You're all caught up." : "No results for \"\(viewModel.searchText)\".")
+                    )
+                    .padding(.top, 40)
+                }
+                .refreshable {
+                    await viewModel.refresh(session: sessionManager.session)
+                }
             } else {
                 List {
-                    ForEach(viewModel.displayedMessages) { msg in
+                    ForEach(Array(viewModel.displayedMessages.enumerated()), id: \.element.id) { index, msg in
                         if let messageID = msg.messageID {
-                            NavigationLink {
-                                DireqtMessageDetailView(messageID: messageID)
-                            } label: {
+                            NavigationLink(value: messageID) {
                                 messageRow(msg)
                             }
+                            .listRowSeparator(index == 0 ? .hidden : .visible, edges: .top)
+                            .listRowSeparator(index == viewModel.displayedMessages.count - 1 ? .hidden : .visible, edges: .bottom)
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    viewModel.trash(msg, session: sessionManager.session)
-                                } label: {
-                                    Label("Trash", systemImage: "trash")
+                                if viewModel.selectedLabel == "trash" {
+                                    Button {
+                                        viewModel.restore(msg, session: sessionManager.session)
+                                    } label: {
+                                        Label("Restore", systemImage: "tray.and.arrow.up")
+                                    }
+                                    .tint(.green)
+                                } else {
+                                    Button(role: .destructive) {
+                                        viewModel.trash(msg, session: sessionManager.session)
+                                    } label: {
+                                        Label("Trash", systemImage: "trash")
+                                    }
                                 }
 
                                 Button {
@@ -185,6 +220,8 @@ struct DireqtMessagesView: View {
                             }
                         } else {
                             messageRow(msg)
+                                .listRowSeparator(index == 0 ? .hidden : .visible, edges: .top)
+                                .listRowSeparator(index == viewModel.displayedMessages.count - 1 ? .hidden : .visible, edges: .bottom)
                         }
                     }
                 }
@@ -216,6 +253,12 @@ struct DireqtMessagesView: View {
                         .font(.headline)
                         .fontWeight(.semibold)
                         .foregroundStyle(.blue)
+                }
+                .overlay {
+                    if msg.starred {
+                        Circle()
+                            .strokeBorder(Color.orange, lineWidth: 2.5)
+                    }
                 }
                 .padding(.trailing, 12)
 

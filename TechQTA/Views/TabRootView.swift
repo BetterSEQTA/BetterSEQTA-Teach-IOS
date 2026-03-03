@@ -15,7 +15,9 @@ enum AppTab: Hashable {
 }
 
 struct TabRootView: View {
+    @StateObject private var deepLink = DeepLinkNavigator.shared
     @State private var selectedTab: AppTab = .home
+    @State private var messagesPath = NavigationPath()
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -35,8 +37,17 @@ struct TabRootView: View {
             }
             .tag(AppTab.timetable)
 
-            tabContainer(title: "Messages") {
+            NavigationStack(path: $messagesPath) {
                 DireqtMessagesView()
+                    .navigationDestination(for: Int.self) { messageID in
+                        DireqtMessageDetailView(messageID: messageID)
+                    }
+                    .navigationTitle("Messages")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .toolbarTitleDisplayMode(.inline)
+            }
+            .safeAreaInset(edge: .top, spacing: -8) {
+                EmptyView()
             }
             .tabItem {
                 Label("Messages", systemImage: "bubble.left.and.bubble.right")
@@ -50,6 +61,15 @@ struct TabRootView: View {
                 Label("Settings", systemImage: "gearshape")
             }
             .tag(AppTab.settings)
+        }
+        .onChange(of: deepLink.pendingMessageID) { _, messageID in
+            guard let messageID else { return }
+            selectedTab = .messages
+            // Small delay to let the tab switch complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                messagesPath.append(messageID)
+                deepLink.pendingMessageID = nil
+            }
         }
     }
 

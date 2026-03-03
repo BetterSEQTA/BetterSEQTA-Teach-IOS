@@ -64,6 +64,15 @@ struct TeachMessageDetail {
 
 enum RecipientType: String {
     case staff, student, tutor, contact
+
+    var displayName: String {
+        switch self {
+        case .staff: return "Staff"
+        case .student: return "Student"
+        case .tutor: return "Tutor"
+        case .contact: return "Parents"
+        }
+    }
 }
 
 struct Recipient: Identifiable, Hashable {
