@@ -31,35 +31,36 @@ struct UrlEntryView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 28) {
-                VStack(spacing: 20) {
-                    Image(systemName: "link")
-                        .font(.system(size: 34, weight: .semibold))
-                        .foregroundStyle(.tint)
-                        .padding(.top, 8)
-
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("School URL")
-                            .font(.title3)
+                        Text("Sign in to SEQTA Teach")
+                            .font(.title)
                             .fontWeight(.bold)
-
-                        Text("Enter your school's SEQTA Teach address. You'll log in in the next step, then tap Done.")
+                        Text("Enter your school's address to get started")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top, 8)
 
-                    VStack(alignment: .leading, spacing: 8) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("School URL")
+                            .font(.subheadline)
+                            .fontWeight(.medium)
+                            .foregroundStyle(.secondary)
+
                         TextField("school.seqta.com.au", text: $urlString)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.plain)
                             .textInputAutocapitalization(.never)
                             .autocorrectionDisabled()
                             .keyboardType(.URL)
                             .textContentType(.URL)
                             .submitLabel(.go)
                             .focused($isUrlFocused)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 16)
+                            .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
                             .onSubmit {
                                 guard let url = validatedUrl else { return }
                                 sessionManager.startLogin(with: url)
@@ -79,35 +80,38 @@ struct UrlEntryView: View {
                         } else {
                             Text("Example: teach.school.edu.au")
                                 .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .foregroundStyle(.tertiary)
                         }
                     }
-
-                    Button {
-                        guard let url = validatedUrl else { return }
-                        sessionManager.startLogin(with: url)
-                    } label: {
-                        Text("Continue")
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!isLoginEnabled)
-                    .padding(.top, 4)
                 }
-                .padding(24)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20))
-                .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(Color.primary.opacity(0.06), lineWidth: 1))
-
-                Spacer(minLength: 24)
+                .padding(.horizontal, 20)
+                .padding(.top, 24)
+                .padding(.bottom, 24)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 40)
+            .scrollDismissesKeyboard(.interactively)
+
+            VStack(spacing: 0) {
+                Divider()
+                Button {
+                    guard let url = validatedUrl else { return }
+                    sessionManager.startLogin(with: url)
+                } label: {
+                    Text("Continue")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 18)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!isLoginEnabled)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .padding(.bottom, 8)
+            }
+            .background(Color(.systemBackground))
         }
         .navigationTitle("Log in")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 isUrlFocused = true

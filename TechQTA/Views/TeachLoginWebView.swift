@@ -26,36 +26,42 @@ struct TeachLoginWebView: View {
             )
             .overlay(alignment: .top) {
                 if case .error(let msg) = sessionManager.loginStatus {
-                    Text(msg)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(.thinMaterial)
+                    HStack(spacing: 8) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.red)
+                        Text(msg)
+                            .font(.subheadline)
+                            .foregroundStyle(.red)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .frame(maxWidth: .infinity)
+                    .background(.ultraThinMaterial)
                 }
             }
         }
         .safeAreaInset(edge: .bottom) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.title3)
+                    .font(.title2)
                     .foregroundStyle(.tint)
 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("After you finish signing in, tap **Done**.")
+                    Text("Tap **Done** when you're signed in")
                         .font(.subheadline)
                         .fontWeight(.medium)
-                    Text("We’ll capture your session cookie from this device.")
+                    Text("Your session stays on this device only")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(16)
-            .background(Color(.secondarySystemGroupedBackground))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(.regularMaterial)
         }
         .navigationTitle(baseUrl.host ?? "SEQTA Teach")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
@@ -63,8 +69,11 @@ struct TeachLoginWebView: View {
                 }
             }
             ToolbarItem(placement: .primaryAction) {
-                Button("Done") {
+                Button {
                     captureTrigger += 1
+                } label: {
+                    Text("Done")
+                        .fontWeight(.semibold)
                 }
             }
         }

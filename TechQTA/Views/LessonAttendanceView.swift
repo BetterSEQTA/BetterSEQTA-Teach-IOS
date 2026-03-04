@@ -5,10 +5,9 @@
 
 import SwiftUI
 
-private let cycleTypes = ["yes", "no"]
-
 struct LessonAttendanceView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
+    @Environment(\.dismiss) private var dismiss
 
     let lesson: TeachLesson
     let date: String
@@ -23,6 +22,7 @@ struct LessonAttendanceView: View {
     @State private var saveError: String?
     @State private var showStats = false
     @State private var typePickerStudent: TeachAttendanceStudent?
+    @State private var showDiscardConfirmation = false
 
     private let client = TeachAttendanceClient()
 
@@ -89,19 +89,35 @@ struct LessonAttendanceView: View {
 
                     Section {
                         ForEach(students) { student in
-                            studentRow(student, onLongPress: { typePickerStudent = student })
+                            studentRow(student)
                                 .contentShape(Rectangle())
-                                .onTapGesture {
-                                    cycleAttendance(for: student)
+                                .onLongPressGesture {
+                                    typePickerStudent = student
+                                }
+                                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                    Button {
+                                        pendingChanges[student.id] = "yes"
+                                    } label: {
+                                        Label("Yes", systemImage: "checkmark.circle.fill")
+                                    }
+                                    .tint(.green)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button {
+                                        pendingChanges[student.id] = "no"
+                                    } label: {
+                                        Label("No", systemImage: "xmark.circle.fill")
+                                    }
+                                    .tint(.red)
                                 }
                         }
                     } header: {
                         Text("Students")
                     } footer: {
                         HStack(spacing: 6) {
-                            Image(systemName: "hand.tap.fill")
+                            Image(systemName: "arrow.left.arrow.right")
                                 .font(.caption2)
-                            Text("Tap to mark attendance")
+                            Text("Swipe left = No, right = Yes")
                             Text("•")
                             Image(systemName: "hand.raised.fill")
                                 .font(.caption2)
@@ -116,7 +132,22 @@ struct LessonAttendanceView: View {
         }
         .navigationTitle(lessonTimeDateTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .navigationBarBackButtonHidden(true)
         .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button {
+                    if pendingChanges.isEmpty {
+                        dismiss()
+                    } else {
+                        showDiscardConfirmation = true
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
+                    }
+                }
+            }
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     Task { await save() }
@@ -148,6 +179,14 @@ struct LessonAttendanceView: View {
         } message: {
             Text(saveError ?? "")
         }
+        .confirmationDialog("Discard changes?", isPresented: $showDiscardConfirmation, titleVisibility: .visible) {
+            Button("Discard", role: .destructive) {
+                dismiss()
+            }
+            Button("Keep Editing", role: .cancel) { }
+        } message: {
+            Text("You have unsaved attendance changes. Are you sure you want to leave?")
+        }
         .sheet(item: $typePickerStudent) { student in
             AttendanceTypePickerSheet(
                 types: selectableTypes,
@@ -166,18 +205,6 @@ struct LessonAttendanceView: View {
             .presentationDetents([.medium, .large])
             .presentationDragIndicator(.visible)
         }
-    }
-
-    private func cycleAttendance(for student: TeachAttendanceStudent) {
-        let current = effectiveCode(for: student)
-        let next: String
-        if let idx = cycleTypes.firstIndex(of: current ?? "") {
-            let nextIdx = (idx + 1) % cycleTypes.count
-            next = cycleTypes[nextIdx]
-        } else {
-            next = cycleTypes[0]
-        }
-        pendingChanges[student.id] = next
     }
 
     private func effectiveCode(for student: TeachAttendanceStudent) -> String? {
@@ -204,7 +231,7 @@ struct LessonAttendanceView: View {
     }
 
     @ViewBuilder
-    private func studentRow(_ student: TeachAttendanceStudent, onLongPress: @escaping () -> Void = {}) -> some View {
+    private func studentRow(_ student: TeachAttendanceStudent) -> some View {
         HStack(alignment: .center, spacing: 14) {
             Circle()
                 .fill(Color.blue.opacity(0.1))
@@ -232,13 +259,13 @@ struct LessonAttendanceView: View {
 
             Spacer()
 
-            attendanceStatusBadge(for: student, onLongPress: onLongPress)
+            attendanceStatusBadge(for: student)
         }
         .padding(.vertical, 8)
     }
 
     @ViewBuilder
-    private func attendanceStatusBadge(for student: TeachAttendanceStudent, onLongPress: @escaping () -> Void) -> some View {
+    private func attendanceStatusBadge(for student: TeachAttendanceStudent) -> some View {
         let resolved = resolveAttendanceStatus(student)
         Group {
             if let resolved {
@@ -266,9 +293,6 @@ struct LessonAttendanceView: View {
                 .background(Capsule().fill(Color(.systemGray5)))
                 .foregroundStyle(.secondary)
             }
-        }
-        .onLongPressGesture {
-            onLongPress()
         }
     }
 

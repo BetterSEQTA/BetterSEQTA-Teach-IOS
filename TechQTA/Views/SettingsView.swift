@@ -9,6 +9,8 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
+    @State private var showAbout = false
+    @State private var showPrivacy = false
 
     var body: some View {
         List {
@@ -61,8 +63,29 @@ struct SettingsView: View {
                     .padding(.vertical, 8)
                 }
             }
+
+            Section {
+                Button {
+                    showAbout = true
+                } label: {
+                    Label("About", systemImage: "info.circle")
+                }
+                Button {
+                    showPrivacy = true
+                } label: {
+                    Label("Privacy", systemImage: "hand.raised")
+                }
+            } header: {
+                Text("App")
+            }
         }
         .listStyle(.insetGrouped)
+        .sheet(isPresented: $showAbout) {
+            AboutSheet()
+        }
+        .sheet(isPresented: $showPrivacy) {
+            PrivacySheet()
+        }
         .task(id: sessionManager.session?.jsessionId) {
             if sessionManager.session != nil {
                 await sessionManager.sendHeartbeat()
@@ -119,5 +142,84 @@ struct SettingsView: View {
         case .unauthorized, .error: return .red
         default: return .secondary
         }
+    }
+}
+
+// MARK: - About Sheet
+
+private struct AboutSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private var appVersion: String {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "—"
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 24) {
+                    Text("BetterSEQTA Teach")
+                        .font(.title)
+                        .fontWeight(.bold)
+                    Text("Version \(appVersion)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Text("A cleaner, faster way to access SEQTA Teach — timetable, attendance, and Direqt messages.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.top, 8)
+
+                    Text("Not affiliated with SEQTA or Education Horizons.")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.top, 16)
+                }
+                .padding(24)
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+}
+
+// MARK: - Privacy Sheet
+
+private struct PrivacySheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("Your data stays on your device")
+                        .font(.headline)
+
+                    Text("Your SEQTA session cookie (JSESSIONID) is stored only in the iOS Keychain on this device. We do not send your login credentials to any server other than your school's SEQTA Teach site.")
+
+                    Text("The app communicates directly with your school's SEQTA Teach instance. No third-party analytics or tracking is included.")
+
+                    Text("You can log out at any time from Settings to remove your session from this device.")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(24)
+            }
+            .navigationTitle("Privacy")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
     }
 }
