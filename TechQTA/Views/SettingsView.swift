@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
+    @AppStorage("attendanceViewMode") private var attendanceViewMode: String = AttendanceViewMode.list.rawValue
     @State private var showAbout = false
     @State private var showPrivacy = false
 
@@ -63,6 +64,23 @@ struct SettingsView: View {
                     }
                     .padding(.vertical, 8)
                 }
+            }
+
+            Section {
+                Picker(selection: $attendanceViewMode) {
+                    ForEach(AttendanceViewMode.allCases, id: \.rawValue) { mode in
+                        Text(mode.rawValue).tag(mode.rawValue)
+                    }
+                } label: {
+                    Label("Attendance view", systemImage: "rectangle.stack")
+                }
+                .onChange(of: attendanceViewMode) { _, _ in
+                    FeedbackManager.selection()
+                }
+            } header: {
+                Text("Attendance")
+            } footer: {
+                Text("Choose how you view students when marking attendance.")
             }
 
             Section {

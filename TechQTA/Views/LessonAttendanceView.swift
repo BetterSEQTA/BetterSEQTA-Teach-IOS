@@ -7,10 +7,12 @@ import SwiftUI
 
 private let cycleTypes = ["yes", "no"]
 
-private enum AttendanceViewMode: String, CaseIterable {
+enum AttendanceViewMode: String, CaseIterable {
     case list = "List"
     case card = "Cards"
 }
+
+let attendanceViewModeKey = "attendanceViewMode"
 
 struct LessonAttendanceView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
@@ -30,7 +32,10 @@ struct LessonAttendanceView: View {
     @State private var showStats = false
     @State private var typePickerStudent: TeachAttendanceStudent?
     @State private var showDiscardConfirmation = false
-    @State private var viewMode: AttendanceViewMode = .list
+    @AppStorage(attendanceViewModeKey) private var viewModeRaw: String = AttendanceViewMode.list.rawValue
+    private var viewMode: AttendanceViewMode {
+        AttendanceViewMode(rawValue: viewModeRaw) ?? .list
+    }
     @State private var cardIndex = 0
     @State private var cardDragOffset: CGFloat = 0
     @State private var isFlickingAway = false
@@ -102,27 +107,6 @@ struct LessonAttendanceView: View {
                         Image(systemName: "chevron.left")
                         Text("Back")
                     }
-                }
-            }
-            ToolbarItem(placement: .secondaryAction) {
-                Menu {
-                    Button {
-                        FeedbackManager.selection()
-                        viewMode = .list
-                    } label: {
-                        Label("List view", systemImage: viewMode == .list ? "checkmark" : "")
-                    }
-                    Button {
-                        FeedbackManager.selection()
-                        viewMode = .card
-                        cardIndex = min(cardIndex, students.count - 1)
-                        if cardIndex < 0 { cardIndex = 0 }
-                    } label: {
-                        Label("Cards view", systemImage: viewMode == .card ? "checkmark" : "")
-                    }
-                } label: {
-                    Image(systemName: viewMode == .list ? "list.bullet" : "rectangle.stack")
-                        .font(.body)
                 }
             }
             ToolbarItem(placement: .primaryAction) {
