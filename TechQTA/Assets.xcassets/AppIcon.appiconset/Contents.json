@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "desqtabigenough.png",
+      "filename" : "Icon-iOS-Default-1024x1024@1x.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,22 +13,30 @@
           "value" : "dark"
         }
       ],
-      "filename" : "desqtabigenough 1.png",
+      "filename" : "Icon-iOS-Dark-1024x1024@1x.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
     },
     {
+      "filename" : "Icon-iOS-TintedLight-1024x1024@1x.png",
+      "idiom" : "universal",
+      "platform" : "ios",
+      "size" : "1024x1024",
+      "unassigned" : true
+    },
+    {
       "appearances" : [
         {
           "appearance" : "luminosity",
-          "value" : "tinted"
+          "value" : "dark"
         }
       ],
-      "filename" : "desqtabigenough 2.png",
+      "filename" : "Icon-iOS-TintedDark-1024x1024@1x.png",
       "idiom" : "universal",
       "platform" : "ios",
-      "size" : "1024x1024"
+      "size" : "1024x1024",
+      "unassigned" : true
     }
   ],
   "info" : {
