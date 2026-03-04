@@ -2,9 +2,16 @@
 api/
 
 # Xcode
-xcuserdata/
+*.xcuserdata/
+**/*.xcuserdata/
 DerivedData/
 *.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+# Keep shared schemes tracked, but ignore other shared-data state
+*.xcodeproj/project.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+*.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+*.xcodeproj/xcshareddata/swiftpm/
 
 # macOS
 .DS_Store
