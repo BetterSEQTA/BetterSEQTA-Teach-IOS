@@ -32,6 +32,8 @@ final class TeachSessionManager: ObservableObject {
     @Published private(set) var loginStatus: LoginStatus = .loggedOut
     @Published private(set) var heartbeatStatus: HeartbeatStatus = .idle
 
+    var onLogout: (() -> Void)?
+
     private let heartbeatClient = HeartbeatClient()
     private let userClient = TeachUserClient()
     private let keychainKey = "jsessionId"
@@ -66,6 +68,7 @@ final class TeachSessionManager: ObservableObject {
         staffId = nil
         loginStatus = .loggedOut
         heartbeatStatus = .idle
+        onLogout?()
         Task { await clearPersistedSession() }
     }
 

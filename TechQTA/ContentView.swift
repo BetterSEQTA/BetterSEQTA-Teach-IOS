@@ -49,10 +49,8 @@ struct ContentView: View {
         }
 
         .environmentObject(sessionManager)
-        .onChange(of: sessionManager.session) { _, newValue in
-            if newValue == nil {
-                setupCompleteForThisLogin = false
-            }
+        .onAppear {
+            sessionManager.onLogout = { setupCompleteForThisLogin = false }
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
