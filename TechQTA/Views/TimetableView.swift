@@ -15,6 +15,7 @@ struct TimetableView: View {
         VStack(spacing: 0) {
             HStack(spacing: 16) {
                 Button {
+                    FeedbackManager.light()
                     viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: -1, to: viewModel.selectedDate) ?? viewModel.selectedDate
                 } label: {
                     Image(systemName: "chevron.left")
@@ -33,6 +34,7 @@ struct TimetableView: View {
                 .datePickerStyle(.compact)
 
                 Button {
+                    FeedbackManager.light()
                     viewModel.selectedDate = Calendar.current.date(byAdding: .day, value: 1, to: viewModel.selectedDate) ?? viewModel.selectedDate
                 } label: {
                     Image(systemName: "chevron.right")

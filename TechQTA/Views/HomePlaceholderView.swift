@@ -84,6 +84,7 @@ struct HomePlaceholderView: View {
                         .font(.headline)
                     Spacer()
                     Button {
+                        FeedbackManager.light()
                         selectedTab = .timetable
                     } label: {
                         Text("See all")
@@ -147,6 +148,7 @@ struct HomePlaceholderView: View {
                         .font(.headline)
                     Spacer()
                     Button {
+                        FeedbackManager.light()
                         selectedTab = .messages
                     } label: {
                         Text("See all")

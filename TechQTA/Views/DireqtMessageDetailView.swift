@@ -91,6 +91,7 @@ struct DireqtMessageDetailView: View {
                 .toolbar {
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         Button {
+                            FeedbackManager.light()
                             viewModel.toggleStar(session: sessionManager.session)
                         } label: {
                             Image(systemName: detail.starred ? "star.fill" : "star")
@@ -98,6 +99,7 @@ struct DireqtMessageDetailView: View {
                         }
 
                         Button(role: .destructive) {
+                            FeedbackManager.medium()
                             viewModel.trash(session: sessionManager.session)
                         } label: {
                             Image(systemName: "trash")
@@ -170,6 +172,7 @@ struct DireqtMessageDetailView: View {
     private func moreMenu(detail: TeachMessageDetail) -> some View {
         Menu {
             Button {
+                FeedbackManager.light()
                 viewModel.toggleRead(session: sessionManager.session)
             } label: {
                 Label(
@@ -181,18 +184,21 @@ struct DireqtMessageDetailView: View {
             Divider()
 
             Button {
+                FeedbackManager.light()
                 showReplyComposer = true
             } label: {
                 Label("Reply", systemImage: "arrowshape.turn.up.left")
             }
 
             Button {
+                FeedbackManager.light()
                 showReplyAllComposer = true
             } label: {
                 Label("Reply All", systemImage: "arrowshape.turn.up.left.2")
             }
 
             Button {
+                FeedbackManager.light()
                 showForwardComposer = true
             } label: {
                 Label("Forward", systemImage: "arrowshape.turn.up.right")

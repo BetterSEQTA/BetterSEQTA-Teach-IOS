@@ -48,9 +48,13 @@ struct SetupOnboardingView: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
             .indexViewStyle(.page(backgroundDisplayMode: .always))
+            .onChange(of: currentPage) { _, _ in
+                FeedbackManager.selection()
+            }
 
             if currentPage == cards.count - 1 {
                 Button {
+                    FeedbackManager.medium()
                     onComplete()
                 } label: {
                     Text("Get Started")

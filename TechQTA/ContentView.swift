@@ -22,7 +22,11 @@ struct ContentView: View {
                         if let session = sessionManager.session {
                             TeachLoginWebView(
                                 baseUrl: session.baseUrl,
-                                onLoginSuccess: { sessionManager.completeLogin(with: $0) },
+                                onLoginSuccess: { session in
+                                    FeedbackManager.success()
+                                    FeedbackManager.playSuccess()
+                                    sessionManager.completeLogin(with: session)
+                                },
                                 onCancel: { sessionManager.cancelLogin() }
                             )
                             .transition(.move(edge: .bottom))

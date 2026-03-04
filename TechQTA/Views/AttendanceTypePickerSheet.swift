@@ -18,6 +18,7 @@ struct AttendanceTypePickerSheet: View {
             List {
                 Section {
                     Button(role: .destructive) {
+                        FeedbackManager.medium()
                         onClear()
                     } label: {
                         HStack(spacing: 12) {
@@ -71,6 +72,7 @@ struct AttendanceTypePickerSheet: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        FeedbackManager.light()
                         onDismiss()
                     }
                 }

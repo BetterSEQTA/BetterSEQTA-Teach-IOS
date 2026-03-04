@@ -65,11 +65,13 @@ struct TeachLoginWebView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") {
+                    FeedbackManager.light()
                     onCancel()
                 }
             }
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    FeedbackManager.heavy()
                     captureTrigger += 1
                 } label: {
                     Text("Done")

@@ -62,10 +62,14 @@ struct ComposeMessageView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancel") {
+                        FeedbackManager.light()
+                        dismiss()
+                    }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
+                        FeedbackManager.heavy()
                         Task { await viewModel.send(session: sessionManager.session) }
                     } label: {
                         if viewModel.isSending {
@@ -87,7 +91,14 @@ struct ComposeMessageView: View {
                 RecipientPickerView(viewModel: viewModel)
             }
             .onChange(of: viewModel.didSend) {
-                if viewModel.didSend { dismiss() }
+                if viewModel.didSend {
+                    FeedbackManager.success()
+                    FeedbackManager.playSuccess()
+                    dismiss()
+                }
+            }
+            .onChange(of: viewModel.sendError) { _, newValue in
+                if newValue != nil { FeedbackManager.error() }
             }
             .task {
                 await viewModel.loadRecipients(session: sessionManager.session)
@@ -136,6 +147,7 @@ struct ComposeMessageView: View {
                                 .lineLimit(1)
 
                             Button {
+                                FeedbackManager.light()
                                 viewModel.removeRecipient(recipient)
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
@@ -163,6 +175,7 @@ struct ComposeMessageView: View {
                 }
 
                 Button {
+                    FeedbackManager.light()
                     showRecipientPicker = true
                 } label: {
                     Image(systemName: "plus.circle.fill")
@@ -180,6 +193,7 @@ struct ComposeMessageView: View {
                 VStack(spacing: 0) {
                     ForEach(suggestions, id: \.self) { recipient in
                         Button {
+                            FeedbackManager.light()
                             viewModel.selectedRecipients.append(recipient)
                             toSearchText = ""
                         } label: {
@@ -306,6 +320,7 @@ private struct RecipientPickerView: View {
 
                 List(filteredList, id: \.self) { recipient in
                     Button {
+                        FeedbackManager.light()
                         viewModel.toggleRecipient(recipient)
                     } label: {
                         HStack {
@@ -332,7 +347,10 @@ private struct RecipientPickerView: View {
             .searchable(text: $viewModel.recipientSearchText, prompt: "Search recipients")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") {
+                        FeedbackManager.light()
+                        dismiss()
+                    }
                 }
             }
         }
@@ -346,7 +364,10 @@ private struct RecipientPickerView: View {
 
     @ViewBuilder
     private func filterChip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+        Button {
+            FeedbackManager.selection()
+            action()
+        } label: {
             Text(title)
                 .font(.subheadline)
                 .fontWeight(.medium)

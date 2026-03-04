@@ -58,6 +58,9 @@ struct TabRootView: View {
             }
             .tag(AppTab.settings)
         }
+        .onChange(of: selectedTab) { _, _ in
+            FeedbackManager.selection()
+        }
         .onChange(of: deepLink.pendingMessageID) { _, messageID in
             guard let messageID else { return }
             selectedTab = .messages

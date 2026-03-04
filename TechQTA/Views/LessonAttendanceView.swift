@@ -91,8 +91,10 @@ struct LessonAttendanceView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button {
                     if pendingChanges.isEmpty {
+                        FeedbackManager.light()
                         dismiss()
                     } else {
+                        FeedbackManager.warning()
                         showDiscardConfirmation = true
                     }
                 } label: {
@@ -105,11 +107,13 @@ struct LessonAttendanceView: View {
             ToolbarItem(placement: .secondaryAction) {
                 Menu {
                     Button {
+                        FeedbackManager.selection()
                         viewMode = .list
                     } label: {
                         Label("List view", systemImage: viewMode == .list ? "checkmark" : "")
                     }
                     Button {
+                        FeedbackManager.selection()
                         viewMode = .card
                         cardIndex = min(cardIndex, students.count - 1)
                         if cardIndex < 0 { cardIndex = 0 }
@@ -123,6 +127,7 @@ struct LessonAttendanceView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    FeedbackManager.heavy()
                     Task { await save() }
                 } label: {
                     if isSaving {
@@ -169,6 +174,7 @@ struct LessonAttendanceView: View {
                 studentName: (student.prefname ?? student.firstname) + " " + student.surname,
                 currentCode: effectiveCode(for: student),
                 onSelect: { code in
+                    FeedbackManager.light()
                     pendingChanges[student.id] = code
                     typePickerStudent = nil
                     if viewMode == .card {
@@ -194,6 +200,7 @@ struct LessonAttendanceView: View {
             if !summaryByStudent.isEmpty {
                 Section {
                     Button {
+                        FeedbackManager.light()
                         showStats = true
                     } label: {
                         HStack(spacing: 12) {
@@ -228,13 +235,18 @@ struct LessonAttendanceView: View {
                         .contentShape(Rectangle())
                         .animation(.easeInOut(duration: 0.2), value: effectiveCode(for: student))
                         .onTapGesture {
+                            FeedbackManager.light()
+                            FeedbackManager.playTick()
                             cycleAttendance(for: student)
                         }
                         .onLongPressGesture {
+                            FeedbackManager.medium()
                             typePickerStudent = student
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             Button {
+                                FeedbackManager.medium()
+                                FeedbackManager.playMark()
                                 pendingChanges[student.id] = "yes"
                             } label: {
                                 Label("Yes", systemImage: "checkmark.circle.fill")
@@ -243,6 +255,8 @@ struct LessonAttendanceView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button {
+                                FeedbackManager.medium()
+                                FeedbackManager.playMark()
                                 pendingChanges[student.id] = "no"
                             } label: {
                                 Label("No", systemImage: "xmark.circle.fill")
@@ -312,7 +326,10 @@ struct LessonAttendanceView: View {
                             .offset(x: isTop ? cardDragOffset : 0)
                             .rotationEffect(.degrees(isTop ? Double(cardDragOffset) / 12 : 0))
                             .onLongPressGesture {
-                                if isTop { typePickerStudent = student }
+                                if isTop {
+                                    FeedbackManager.medium()
+                                    typePickerStudent = student
+                                }
                             }
                             .overlay(alignment: .leading) {
                                 if isTop && cardDragOffset > 15 {
@@ -386,6 +403,7 @@ struct LessonAttendanceView: View {
                     HStack(spacing: 24) {
                         if cardIndex > 0 {
                             Button {
+                                FeedbackManager.light()
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                     cardIndex -= 1
                                 }
@@ -396,6 +414,7 @@ struct LessonAttendanceView: View {
                         }
                         Spacer()
                         Button {
+                            FeedbackManager.light()
                             advanceCard()
                         } label: {
                             Label("Skip", systemImage: "forward.fill")
@@ -413,6 +432,8 @@ struct LessonAttendanceView: View {
     }
 
     private func flickCard(direction: Int, student: TeachAttendanceStudent, code: String) {
+        FeedbackManager.medium()
+        FeedbackManager.playMark()
         isFlickingAway = true
         pendingChanges[student.id] = code
         let exitX = CGFloat(direction) * 450
@@ -513,10 +534,15 @@ struct LessonAttendanceView: View {
             try await client.saveAttendance(session: session, attendance: body)
             await MainActor.run {
                 pendingChanges.removeAll()
+                FeedbackManager.success()
+                FeedbackManager.playSuccess()
             }
             await load()
         } catch {
             saveError = error.localizedDescription
+            await MainActor.run {
+                FeedbackManager.error()
+            }
         }
         isSaving = false
     }

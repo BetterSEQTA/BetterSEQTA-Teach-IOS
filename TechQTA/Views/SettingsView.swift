@@ -42,6 +42,7 @@ struct SettingsView: View {
 
                 Section {
                     Button(role: .destructive) {
+                        FeedbackManager.warning()
                         sessionManager.logout()
                     } label: {
                         Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
@@ -66,11 +67,13 @@ struct SettingsView: View {
 
             Section {
                 Button {
+                    FeedbackManager.light()
                     showAbout = true
                 } label: {
                     Label("About", systemImage: "info.circle")
                 }
                 Button {
+                    FeedbackManager.light()
                     showPrivacy = true
                 } label: {
                     Label("Privacy", systemImage: "hand.raised")
@@ -181,7 +184,10 @@ private struct AboutSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") {
+                        FeedbackManager.light()
+                        dismiss()
+                    }
                 }
             }
         }
@@ -215,7 +221,10 @@ private struct PrivacySheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") {
+                        FeedbackManager.light()
+                        dismiss()
+                    }
                 }
             }
         }
