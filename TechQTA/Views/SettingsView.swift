@@ -10,6 +10,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
     @AppStorage("attendanceViewMode") private var attendanceViewMode: String = AttendanceViewMode.list.rawValue
+    @AppStorage("faceIDEnabled") private var faceIDEnabled = false
     @State private var showAbout = false
     @State private var showPrivacy = false
 
@@ -81,6 +82,29 @@ struct SettingsView: View {
                 Text("Attendance")
             } footer: {
                 Text("Choose how you view students when marking attendance.")
+            }
+
+            if sessionManager.session != nil && BiometricAuthHelper.isAvailable {
+                Section {
+                    Toggle(isOn: $faceIDEnabled) {
+                        Label("Require \(BiometricAuthHelper.biometricTypeName) to open", systemImage: "faceid")
+                    }
+                    .onChange(of: faceIDEnabled) { _, newValue in
+                        FeedbackManager.selection()
+                        if newValue {
+                            Task {
+                                let success = await BiometricAuthHelper.authenticate(reason: "Enable \(BiometricAuthHelper.biometricTypeName) to unlock the app")
+                                if !success {
+                                    await MainActor.run { faceIDEnabled = false }
+                                }
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Security")
+                } footer: {
+                    Text("Require \(BiometricAuthHelper.biometricTypeName) every time you open the app.")
+                }
             }
 
             Section {

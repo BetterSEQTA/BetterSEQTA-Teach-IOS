@@ -409,6 +409,7 @@
 				INFOPLIST_FILE = "TechQTA-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "BetterSEQTA Teach";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use FACE ID to securely unlock the app protecting the data inside.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -446,6 +447,7 @@
 				INFOPLIST_FILE = "TechQTA-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "BetterSEQTA Teach";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_NSFaceIDUsageDescription = "We use FACE ID to securely unlock the app protecting the data inside.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
