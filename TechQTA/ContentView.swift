@@ -39,6 +39,7 @@ struct ContentView: View {
                                 baseUrl: session.baseUrl,
                                 onLoginSuccess: { session in
                                     FeedbackManager.success()
+                                    FeedbackManager.longVibration()
                                     FeedbackManager.playSuccess()
                                     sessionManager.completeLogin(with: session)
                                 },
@@ -149,7 +150,7 @@ private struct FaceIDLockOverlay: View {
 
                 if phase == .failed {
                     Button {
-                        FeedbackManager.light()
+                        FeedbackManager.doubleTap()
                         phase = .authenticating
                         Task { await attemptUnlock() }
                     } label: {
@@ -178,6 +179,7 @@ private struct FaceIDLockOverlay: View {
             if success {
                 phase = .success
                 FeedbackManager.success()
+                FeedbackManager.longVibration()
                 FeedbackManager.playSuccess()
             } else {
                 phase = .failed

@@ -96,7 +96,7 @@ struct LessonAttendanceView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button {
                     if pendingChanges.isEmpty {
-                        FeedbackManager.light()
+                        FeedbackManager.doubleTap()
                         dismiss()
                     } else {
                         FeedbackManager.warning()
@@ -111,7 +111,7 @@ struct LessonAttendanceView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Button {
-                    FeedbackManager.heavy()
+                    FeedbackManager.longThenShort()
                     Task { await save() }
                 } label: {
                     if isSaving {
@@ -158,7 +158,7 @@ struct LessonAttendanceView: View {
                 studentName: (student.prefname ?? student.firstname) + " " + student.surname,
                 currentCode: effectiveCode(for: student),
                 onSelect: { code in
-                    FeedbackManager.light()
+                    FeedbackManager.doubleTap()
                     pendingChanges[student.id] = code
                     typePickerStudent = nil
                     if viewMode == .card {
@@ -184,7 +184,7 @@ struct LessonAttendanceView: View {
             if !summaryByStudent.isEmpty {
                 Section {
                     Button {
-                        FeedbackManager.light()
+                        FeedbackManager.doubleTap()
                         showStats = true
                     } label: {
                         HStack(spacing: 12) {
@@ -219,17 +219,17 @@ struct LessonAttendanceView: View {
                         .contentShape(Rectangle())
                         .animation(.easeInOut(duration: 0.2), value: effectiveCode(for: student))
                         .onTapGesture {
-                            FeedbackManager.light()
+                            FeedbackManager.doubleTap()
                             FeedbackManager.playTick()
                             cycleAttendance(for: student)
                         }
                         .onLongPressGesture {
-                            FeedbackManager.medium()
+                            FeedbackManager.tripleTap()
                             typePickerStudent = student
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: true) {
                             Button {
-                                FeedbackManager.medium()
+                                FeedbackManager.doubleTap()
                                 FeedbackManager.playMark()
                                 pendingChanges[student.id] = "yes"
                             } label: {
@@ -239,7 +239,7 @@ struct LessonAttendanceView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button {
-                                FeedbackManager.medium()
+                                FeedbackManager.doubleTap()
                                 FeedbackManager.playMark()
                                 pendingChanges[student.id] = "no"
                             } label: {
@@ -311,7 +311,7 @@ struct LessonAttendanceView: View {
                             .rotationEffect(.degrees(isTop ? Double(cardDragOffset) / 12 : 0))
                             .onLongPressGesture {
                                 if isTop {
-                                    FeedbackManager.medium()
+                                    FeedbackManager.tripleTap()
                                     typePickerStudent = student
                                 }
                             }
@@ -387,7 +387,7 @@ struct LessonAttendanceView: View {
                     HStack(spacing: 24) {
                         if cardIndex > 0 {
                             Button {
-                                FeedbackManager.light()
+                                FeedbackManager.tripleTap()
                                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
                                     cardIndex -= 1
                                 }
@@ -398,7 +398,7 @@ struct LessonAttendanceView: View {
                         }
                         Spacer()
                         Button {
-                            FeedbackManager.light()
+                            FeedbackManager.tripleTap()
                             advanceCard()
                         } label: {
                             Label("Skip", systemImage: "forward.fill")
@@ -416,7 +416,7 @@ struct LessonAttendanceView: View {
     }
 
     private func flickCard(direction: Int, student: TeachAttendanceStudent, code: String) {
-        FeedbackManager.medium()
+        FeedbackManager.doubleTap()
         FeedbackManager.playMark()
         isFlickingAway = true
         pendingChanges[student.id] = code
@@ -519,6 +519,7 @@ struct LessonAttendanceView: View {
             await MainActor.run {
                 pendingChanges.removeAll()
                 FeedbackManager.success()
+                FeedbackManager.longVibration()
                 FeedbackManager.playSuccess()
             }
             await load()

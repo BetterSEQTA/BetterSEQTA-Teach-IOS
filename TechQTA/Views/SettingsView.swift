@@ -45,6 +45,7 @@ struct SettingsView: View {
                 Section {
                     Button(role: .destructive) {
                         FeedbackManager.warning()
+                        FeedbackManager.longVibration()
                         sessionManager.logout()
                     } label: {
                         Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
@@ -76,7 +77,7 @@ struct SettingsView: View {
                     Label("Attendance view", systemImage: "rectangle.stack")
                 }
                 .onChange(of: attendanceViewMode) { _, _ in
-                    FeedbackManager.selection()
+                    FeedbackManager.doubleTap()
                 }
             } header: {
                 Text("Attendance")
@@ -90,7 +91,7 @@ struct SettingsView: View {
                         Label("Require \(BiometricAuthHelper.biometricTypeName) to open", systemImage: "faceid")
                     }
                     .onChange(of: faceIDEnabled) { _, newValue in
-                        FeedbackManager.selection()
+                        FeedbackManager.doubleTap()
                         if newValue {
                             Task {
                                 let success = await BiometricAuthHelper.authenticate(reason: "Enable \(BiometricAuthHelper.biometricTypeName) to unlock the app")
@@ -109,13 +110,13 @@ struct SettingsView: View {
 
             Section {
                 Button {
-                    FeedbackManager.light()
+                    FeedbackManager.doubleTap()
                     showAbout = true
                 } label: {
                     Label("About", systemImage: "info.circle")
                 }
                 Button {
-                    FeedbackManager.light()
+                    FeedbackManager.doubleTap()
                     showPrivacy = true
                 } label: {
                     Label("Privacy", systemImage: "hand.raised")
@@ -228,7 +229,7 @@ private struct AboutSheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        FeedbackManager.light()
+                        FeedbackManager.doubleTap()
                         dismiss()
                     }
                 }
@@ -265,7 +266,7 @@ private struct PrivacySheet: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        FeedbackManager.light()
+                        FeedbackManager.doubleTap()
                         dismiss()
                     }
                 }

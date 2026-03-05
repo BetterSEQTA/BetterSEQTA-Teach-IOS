@@ -99,7 +99,7 @@ struct DireqtMessageDetailView: View {
                 .toolbar {
                     ToolbarItemGroup(placement: .topBarTrailing) {
                         Button {
-                            FeedbackManager.light()
+                            FeedbackManager.doubleTap()
                             viewModel.toggleStar(session: sessionManager.session)
                         } label: {
                             Image(systemName: detail.starred ? "star.fill" : "star")
@@ -107,7 +107,7 @@ struct DireqtMessageDetailView: View {
                         }
 
                         Button(role: .destructive) {
-                            FeedbackManager.medium()
+                            FeedbackManager.doubleTap()
                             viewModel.trash(session: sessionManager.session)
                         } label: {
                             Image(systemName: "trash")
@@ -182,7 +182,7 @@ struct DireqtMessageDetailView: View {
     private func moreMenu(detail: TeachMessageDetail) -> some View {
         Menu {
             Button {
-                FeedbackManager.light()
+                FeedbackManager.doubleTap()
                 viewModel.toggleRead(session: sessionManager.session)
             } label: {
                 Label(
@@ -194,7 +194,7 @@ struct DireqtMessageDetailView: View {
             Divider()
 
             Button {
-                FeedbackManager.light()
+                FeedbackManager.doubleTap()
                 replyWithSmartReply = nil
                 showReplyComposer = true
             } label: {
@@ -202,14 +202,14 @@ struct DireqtMessageDetailView: View {
             }
 
             Button {
-                FeedbackManager.light()
+                FeedbackManager.doubleTap()
                 showReplyAllComposer = true
             } label: {
                 Label("Reply All", systemImage: "arrowshape.turn.up.left.2")
             }
 
             Button {
-                FeedbackManager.light()
+                FeedbackManager.doubleTap()
                 showForwardComposer = true
             } label: {
                 Label("Forward", systemImage: "arrowshape.turn.up.right")
@@ -229,6 +229,7 @@ struct DireqtMessageDetailView: View {
         Menu {
             ForEach(viewModel.labels) { label in
                 Button {
+                    FeedbackManager.doubleTap()
                     viewModel.moveToLabel(label.label, session: sessionManager.session)
                 } label: {
                     Label(
@@ -297,6 +298,7 @@ struct DireqtMessageDetailView: View {
 
                         if participants.count > 3 {
                             Button {
+                                FeedbackManager.doubleTap()
                                 withAnimation(.snappy(duration: 0.2)) {
                                     participantsExpanded.toggle()
                                 }
@@ -332,7 +334,7 @@ struct DireqtMessageDetailView: View {
 
             if smartReplies.isEmpty && !isLoadingSmartReplies {
                 Button {
-                    FeedbackManager.light()
+                    FeedbackManager.doubleTap()
                     loadSmartReplies(body: body)
                 } label: {
                     Label("Suggest replies", systemImage: "text.bubble")
@@ -348,7 +350,7 @@ struct DireqtMessageDetailView: View {
                 VStack(spacing: 8) {
                     ForEach(Array(smartReplies.enumerated()), id: \.offset) { index, reply in
                         Button {
-                            FeedbackManager.light()
+                            FeedbackManager.doubleTap()
                             replyWithSmartReply = reply
                             showReplyComposer = true
                         } label: {

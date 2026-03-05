@@ -41,7 +41,7 @@ struct DireqtMessagesView: View {
                 .overlay(Capsule().strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.25 : 0.2), lineWidth: 0.5))
 
                 Button {
-                    FeedbackManager.light()
+                    FeedbackManager.doubleTap()
                     showCompose = true
                 } label: {
                     Image(systemName: "square.and.pencil")
@@ -72,7 +72,7 @@ struct DireqtMessagesView: View {
                     let unread = viewModel.labels.first(where: { $0.label == item.label })?.unread ?? 0
 
                     Button {
-                        FeedbackManager.selection()
+                        FeedbackManager.doubleTap()
                         let label = item.label
                         let session = sessionManager.session
                         withAnimation(.snappy(duration: 0.25)) {
@@ -184,7 +184,7 @@ struct DireqtMessagesView: View {
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 if viewModel.selectedLabel == "trash" {
                                     Button {
-                                        FeedbackManager.medium()
+                                        FeedbackManager.doubleTap()
                                         viewModel.restore(msg, session: sessionManager.session)
                                     } label: {
                                         Label("Restore", systemImage: "tray.and.arrow.up")
@@ -192,7 +192,7 @@ struct DireqtMessagesView: View {
                                     .tint(.green)
                                 } else {
                                     Button(role: .destructive) {
-                                        FeedbackManager.medium()
+                                        FeedbackManager.doubleTap()
                                         viewModel.trash(msg, session: sessionManager.session)
                                     } label: {
                                         Label("Trash", systemImage: "trash")
@@ -200,7 +200,7 @@ struct DireqtMessagesView: View {
                                 }
 
                                 Button {
-                                    FeedbackManager.light()
+                                    FeedbackManager.doubleTap()
                                     viewModel.toggleStar(msg, session: sessionManager.session)
                                 } label: {
                                     Label(msg.starred ? "Unflag" : "Flag", systemImage: msg.starred ? "flag.slash" : "flag.fill")
@@ -209,7 +209,7 @@ struct DireqtMessagesView: View {
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: true) {
                                 Button {
-                                    FeedbackManager.light()
+                                    FeedbackManager.doubleTap()
                                     viewModel.toggleRead(msg, session: sessionManager.session)
                                 } label: {
                                     Label(

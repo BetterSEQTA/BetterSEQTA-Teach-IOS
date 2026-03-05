@@ -70,7 +70,7 @@ struct ComposeMessageView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
-                        FeedbackManager.light()
+                        FeedbackManager.doubleTap()
                         dismiss()
                     }
                 }
@@ -78,7 +78,7 @@ struct ComposeMessageView: View {
                     ToolbarItem(placement: .primaryAction) {
                         Menu {
                             Button {
-                                FeedbackManager.light()
+                                FeedbackManager.doubleTap()
                                 Task { await viewModel.proofreadBody() }
                             } label: {
                                 Label("Proofread", systemImage: "text.badge.checkmark")
@@ -86,21 +86,21 @@ struct ComposeMessageView: View {
                             .disabled(viewModel.isAIProcessing)
                             Divider()
                             Button {
-                                FeedbackManager.light()
+                                FeedbackManager.doubleTap()
                                 Task { await viewModel.changeBodyTone(to: "professional") }
                             } label: {
                                 Label("Professional", systemImage: "briefcase")
                             }
                             .disabled(viewModel.isAIProcessing)
                             Button {
-                                FeedbackManager.light()
+                                FeedbackManager.doubleTap()
                                 Task { await viewModel.changeBodyTone(to: "friendly") }
                             } label: {
                                 Label("Friendly", systemImage: "hand.wave")
                             }
                             .disabled(viewModel.isAIProcessing)
                             Button {
-                                FeedbackManager.light()
+                                FeedbackManager.doubleTap()
                                 Task { await viewModel.changeBodyTone(to: "concise") }
                             } label: {
                                 Label("Concise", systemImage: "text.alignleft")
@@ -118,7 +118,7 @@ struct ComposeMessageView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
-                        FeedbackManager.heavy()
+                        FeedbackManager.longThenShort()
                         Task { await viewModel.send(session: sessionManager.session) }
                     } label: {
                         if viewModel.isSending {
@@ -149,6 +149,7 @@ struct ComposeMessageView: View {
             .onChange(of: viewModel.didSend) {
                 if viewModel.didSend {
                     FeedbackManager.success()
+                    FeedbackManager.longVibration()
                     FeedbackManager.playSuccess()
                     dismiss()
                 }
@@ -207,7 +208,7 @@ struct ComposeMessageView: View {
                                 .lineLimit(1)
 
                             Button {
-                                FeedbackManager.light()
+                                FeedbackManager.doubleTap()
                                 viewModel.removeRecipient(recipient)
                             } label: {
                                 Image(systemName: "xmark.circle.fill")
@@ -235,7 +236,7 @@ struct ComposeMessageView: View {
                 }
 
                 Button {
-                    FeedbackManager.light()
+                    FeedbackManager.doubleTap()
                     showRecipientPicker = true
                 } label: {
                     Image(systemName: "plus.circle.fill")
@@ -253,7 +254,7 @@ struct ComposeMessageView: View {
                 VStack(spacing: 0) {
                     ForEach(suggestions, id: \.self) { recipient in
                         Button {
-                            FeedbackManager.light()
+                            FeedbackManager.doubleTap()
                             viewModel.selectedRecipients.append(recipient)
                             toSearchText = ""
                         } label: {
@@ -380,7 +381,7 @@ private struct RecipientPickerView: View {
 
                 List(filteredList, id: \.self) { recipient in
                     Button {
-                        FeedbackManager.light()
+                        FeedbackManager.doubleTap()
                         viewModel.toggleRecipient(recipient)
                     } label: {
                         HStack {
@@ -408,7 +409,7 @@ private struct RecipientPickerView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        FeedbackManager.light()
+                        FeedbackManager.doubleTap()
                         dismiss()
                     }
                 }
@@ -425,7 +426,7 @@ private struct RecipientPickerView: View {
     @ViewBuilder
     private func filterChip(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button {
-            FeedbackManager.selection()
+            FeedbackManager.doubleTap()
             action()
         } label: {
             Text(title)
@@ -466,7 +467,7 @@ private struct FormattingToolbar: View {
 
     private func formatButton(_ command: String, systemImage: String, label: String? = nil) -> some View {
         Button {
-            FeedbackManager.light()
+            FeedbackManager.tripleTap()
             formatCommand = command
         } label: {
             if let label {

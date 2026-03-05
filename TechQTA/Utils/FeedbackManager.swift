@@ -6,11 +6,50 @@
 import SwiftUI
 import UIKit
 import AudioToolbox
+import CoreHaptics
 
 /// Centralized haptic and audio feedback for the app.
 enum FeedbackManager {
 
-    // MARK: - Haptics
+    // MARK: - Core Haptics Engine
+
+    private static var engine: CHHapticEngine?
+    private static let engineLock = NSLock()
+
+    private static func ensureEngine() -> CHHapticEngine? {
+        engineLock.lock()
+        defer { engineLock.unlock() }
+        if engine == nil, CHHapticEngine.capabilitiesForHardware().supportsHaptics {
+            do {
+                let e = try CHHapticEngine()
+                e.stoppedHandler = { _ in }
+                e.resetHandler = {
+                    try? engine?.start()
+                }
+                try e.start()
+                engine = e
+            } catch {
+                return nil
+            }
+        }
+        return engine
+    }
+
+    private static func playPattern(_ events: [CHHapticEvent]) {
+        guard let eng = ensureEngine() else {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            return
+        }
+        do {
+            let pattern = try CHHapticPattern(events: events, parameters: [])
+            let player = try eng.makePlayer(with: pattern)
+            try player.start(atTime: 0)
+        } catch {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        }
+    }
+
+    // MARK: - Standard Haptics
 
     /// Light tap – selection changes, picker, subtle interactions
     static func selection() {
@@ -51,6 +90,36 @@ enum FeedbackManager {
     static func warning() {
         let gen = UINotificationFeedbackGenerator()
         gen.notificationOccurred(.warning)
+    }
+
+    // MARK: - Custom Haptic Patterns (Core Haptics)
+
+    /// Two quick taps – tab changes, list selection, secondary actions
+    static func doubleTap() {
+        let e1 = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0)
+        let e2 = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0.08)
+        playPattern([e1, e2])
+    }
+
+    /// Three quick taps – date navigation, cycle actions, quick sequences
+    static func tripleTap() {
+        let e1 = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0)
+        let e2 = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0.07)
+        let e3 = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0.14)
+        playPattern([e1, e2, e3])
+    }
+
+    /// Long sustained vibration – major completion, significant state change
+    static func longVibration() {
+        let e = CHHapticEvent(eventType: .hapticContinuous, parameters: [], relativeTime: 0, duration: 0.4)
+        playPattern([e])
+    }
+
+    /// Long buzz then short tap – primary actions (Send, Save)
+    static func longThenShort() {
+        let long = CHHapticEvent(eventType: .hapticContinuous, parameters: [], relativeTime: 0, duration: 0.25)
+        let short = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0.28)
+        playPattern([long, short])
     }
 
     // MARK: - Audio

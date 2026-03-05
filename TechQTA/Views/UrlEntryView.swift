@@ -63,7 +63,7 @@ struct UrlEntryView: View {
                             .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
                             .onSubmit {
                                 guard let url = validatedUrl else { return }
-                                FeedbackManager.light()
+                                FeedbackManager.doubleTap()
                                 sessionManager.startLogin(with: url)
                             }
                             .onChange(of: urlString) { _, _ in
@@ -95,7 +95,7 @@ struct UrlEntryView: View {
                 Divider()
                 Button {
                     guard let url = validatedUrl else { return }
-                    FeedbackManager.medium()
+                    FeedbackManager.longThenShort()
                     sessionManager.startLogin(with: url)
                 } label: {
                     Text("Continue")
