@@ -319,8 +319,13 @@ struct DireqtMessageDetailView: View {
                     .font(.headline)
                 if isLoadingSmartReplies {
                     Spacer()
-                    ProgressView()
-                        .scaleEffect(0.8)
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .scaleEffect(0.8)
+                        Text("Generating…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 
@@ -332,9 +337,15 @@ struct DireqtMessageDetailView: View {
                     Label("Suggest replies", systemImage: "text.bubble")
                         .font(.subheadline)
                 }
+            } else if isLoadingSmartReplies {
+                VStack(spacing: 8) {
+                    ForEach(0..<3, id: \.self) { _ in
+                        SmartReplySkeleton()
+                    }
+                }
             } else if !smartReplies.isEmpty {
-                FlowLayout(spacing: 8) {
-                    ForEach(smartReplies, id: \.self) { reply in
+                VStack(spacing: 8) {
+                    ForEach(Array(smartReplies.enumerated()), id: \.offset) { index, reply in
                         Button {
                             FeedbackManager.light()
                             replyWithSmartReply = reply
@@ -342,15 +353,17 @@ struct DireqtMessageDetailView: View {
                         } label: {
                             Text(reply)
                                 .font(.subheadline)
-                                .lineLimit(2)
                                 .multilineTextAlignment(.leading)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
                                 .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10))
                         }
                         .buttonStyle(.plain)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
                     }
                 }
+                .animation(.easeOut(duration: 0.3), value: smartReplies.count)
             }
         }
         .task(id: body) {
@@ -585,6 +598,24 @@ private struct AttachmentQuickLookPreview: UIViewControllerRepresentable {
         func previewController(_ controller: QLPreviewController, previewItemAt index: Int) -> QLPreviewItem {
             url as NSURL
         }
+    }
+}
+
+// MARK: - Smart Reply Skeleton
+
+private struct SmartReplySkeleton: View {
+    @State private var opacity: Double = 0.4
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 10)
+            .fill(Color(.systemGray5))
+            .frame(height: 44)
+            .opacity(opacity)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                    opacity = 0.7
+                }
+            }
     }
 }
 
