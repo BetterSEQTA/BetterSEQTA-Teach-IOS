@@ -29,6 +29,7 @@ final class ComposeMessageViewModel: ObservableObject {
     private let prefillParticipants: [TeachMessageParticipant]
     private let prefillSubject: String?
     private let prefillBodyHTML: String?
+    private let prefillBodyPrefix: String?
     private let selfStaffId: Int?
 
     var filteredRecipients: [Recipient] {
@@ -44,6 +45,7 @@ final class ComposeMessageViewModel: ObservableObject {
         prefillParticipants: [TeachMessageParticipant] = [],
         prefillSubject: String? = nil,
         prefillBodyHTML: String? = nil,
+        prefillBodyPrefix: String? = nil,
         selfStaffId: Int? = nil
     ) {
         self.mode = mode
@@ -52,6 +54,7 @@ final class ComposeMessageViewModel: ObservableObject {
         self.prefillParticipants = prefillParticipants
         self.prefillSubject = prefillSubject
         self.prefillBodyHTML = prefillBodyHTML
+        self.prefillBodyPrefix = prefillBodyPrefix
         self.selfStaffId = selfStaffId
     }
 
@@ -75,6 +78,8 @@ final class ComposeMessageViewModel: ObservableObject {
         await prefill(session: session)
         // Fallback prefill from source message detail, if API metadata is sparse
         applyFallbackPrefillIfNeeded()
+        // Prepend smart reply or other prefix (must run after API prefill)
+        applyPrefillBodyPrefixIfNeeded()
 
         isLoadingRecipients = false
     }
@@ -255,6 +260,15 @@ final class ComposeMessageViewModel: ObservableObject {
             }
             selectedRecipients = matched
         }
+    }
+
+    private func applyPrefillBodyPrefixIfNeeded() {
+        guard let prefix = prefillBodyPrefix, !prefix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let escaped = prefix
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+        bodyHTML = "<p>\(escaped)</p><br><br>\n\(bodyHTML)"
     }
 
     func toggleRecipient(_ recipient: Recipient) {

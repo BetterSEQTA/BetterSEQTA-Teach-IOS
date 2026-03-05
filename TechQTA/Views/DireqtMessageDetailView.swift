@@ -139,7 +139,8 @@ struct DireqtMessageDetailView: View {
                 prefillRecipientNames: detailPrefillRecipientsForReply,
                 prefillParticipants: detailPrefillParticipantsForReply,
                 prefillSubject: viewModel.detail?.subject,
-                prefillBodyHTML: replyPrefillBody,
+                prefillBodyHTML: quotePrefillBody,
+                prefillBodyPrefix: replyWithSmartReply,
                 selfStaffId: sessionManager.staffId
             )
             .onDisappear { replyWithSmartReply = nil }
@@ -492,17 +493,6 @@ struct DireqtMessageDetailView: View {
             }
         }
         return all
-    }
-
-    private var replyPrefillBody: String? {
-        if let reply = replyWithSmartReply {
-            let escaped = reply
-                .replacingOccurrences(of: "&", with: "&amp;")
-                .replacingOccurrences(of: "<", with: "&lt;")
-                .replacingOccurrences(of: ">", with: "&gt;")
-            return "<p>\(escaped)</p><br><br>\n\(quotePrefillBody ?? "")"
-        }
-        return quotePrefillBody
     }
 
     private var quotePrefillBody: String? {

@@ -19,6 +19,7 @@ struct ComposeMessageView: View {
         prefillParticipants: [TeachMessageParticipant] = [],
         prefillSubject: String? = nil,
         prefillBodyHTML: String? = nil,
+        prefillBodyPrefix: String? = nil,
         selfStaffId: Int? = nil
     ) {
         _viewModel = StateObject(
@@ -28,6 +29,7 @@ struct ComposeMessageView: View {
                 prefillParticipants: prefillParticipants,
                 prefillSubject: prefillSubject,
                 prefillBodyHTML: prefillBodyHTML,
+                prefillBodyPrefix: prefillBodyPrefix,
                 selfStaffId: selfStaffId
             )
         )
