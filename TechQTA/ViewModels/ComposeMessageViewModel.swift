@@ -38,6 +38,14 @@ final class ComposeMessageViewModel: ObservableObject {
         return allRecipients.filter { $0.displayName.lowercased().contains(query) }
     }
 
+    /// True when we're loading prefill that might affect body (reply, replyAll, forward with smart reply)
+    var hasPrefillContent: Bool {
+        switch mode {
+        case .new: return prefillBodyPrefix != nil
+        case .reply, .replyAll, .forward: return true
+        }
+    }
+
     init(
         mode: ComposeMode = .new,
         client: TeachMessagesClient = TeachMessagesClient(),
@@ -81,6 +89,10 @@ final class ComposeMessageViewModel: ObservableObject {
         // Prepend smart reply or other prefix (must run after API prefill)
         applyPrefillBodyPrefixIfNeeded()
 
+        if prefillBodyPrefix != nil {
+            try? await Task.sleep(for: .milliseconds(350))
+        }
+
         isLoadingRecipients = false
     }
 
@@ -93,8 +105,8 @@ final class ComposeMessageViewModel: ObservableObject {
     }
 
     func proofreadBody() async {
-        guard AppleIntelligenceService.isAvailable else {
-            aiError = "Apple Intelligence is not available on this device."
+        guard AppleIntelligenceService.isAvailable || CloudflareConfig.isAvailable else {
+            aiError = "AI is not available. Add Cloudflare credentials for non-Apple devices."
             return
         }
         let plainText = bodyHTML.plainTextFromHTML
@@ -104,7 +116,13 @@ final class ComposeMessageViewModel: ObservableObject {
         }
         isAIProcessing = true
         aiError = nil
-        if let result = await AppleIntelligenceService.proofread(plainText) {
+        let result: String?
+        if AppleIntelligenceService.isAvailable {
+            result = await AppleIntelligenceService.proofread(plainText)
+        } else {
+            result = await CloudflareAIService.proofread(plainText)
+        }
+        if let result {
             bodyHTML = result.wrappedInHTMLParagraphs
         } else {
             aiError = "Proofreading failed. Please try again."
@@ -113,8 +131,8 @@ final class ComposeMessageViewModel: ObservableObject {
     }
 
     func changeBodyTone(to tone: String) async {
-        guard AppleIntelligenceService.isAvailable else {
-            aiError = "Apple Intelligence is not available on this device."
+        guard AppleIntelligenceService.isAvailable || CloudflareConfig.isAvailable else {
+            aiError = "AI is not available. Add Cloudflare credentials for non-Apple devices."
             return
         }
         let plainText = bodyHTML.plainTextFromHTML
@@ -124,7 +142,13 @@ final class ComposeMessageViewModel: ObservableObject {
         }
         isAIProcessing = true
         aiError = nil
-        if let result = await AppleIntelligenceService.changeTone(plainText, to: tone) {
+        let result: String?
+        if AppleIntelligenceService.isAvailable {
+            result = await AppleIntelligenceService.changeTone(plainText, to: tone)
+        } else {
+            result = await CloudflareAIService.changeTone(plainText, to: tone)
+        }
+        if let result {
             bodyHTML = result.wrappedInHTMLParagraphs
         } else {
             aiError = "Could not change tone. Please try again."
@@ -199,7 +223,7 @@ final class ComposeMessageViewModel: ObservableObject {
         if let s = meta["subject"] as? String {
             subject = s.hasPrefix(subjectPrefix) ? s : subjectPrefix + s
         }
-        if let c = meta["contents"] as? String {
+        if prefillBodyPrefix == nil, let c = meta["contents"] as? String {
             bodyHTML = c
         }
         if let participantsRaw = meta["participants"] as? [[String: Any]] {
@@ -264,11 +288,20 @@ final class ComposeMessageViewModel: ObservableObject {
 
     private func applyPrefillBodyPrefixIfNeeded() {
         guard let prefix = prefillBodyPrefix, !prefix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        let escaped = prefix
-            .replacingOccurrences(of: "&", with: "&amp;")
-            .replacingOccurrences(of: "<", with: "&lt;")
-            .replacingOccurrences(of: ">", with: "&gt;")
-        bodyHTML = "<p>\(escaped)</p><br><br>\n\(bodyHTML)"
+        if let prefillHTML = prefillBodyHTML, !prefillHTML.isEmpty {
+            bodyHTML = prefillHTML
+        } else {
+            let escaped = prefix
+                .replacingOccurrences(of: "&", with: "&amp;")
+                .replacingOccurrences(of: "<", with: "&lt;")
+                .replacingOccurrences(of: ">", with: "&gt;")
+                .replacingOccurrences(of: "\"", with: "&quot;")
+            let paragraphs = escaped.components(separatedBy: "\n\n")
+                .map { $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\n", with: "<br>") }
+                .filter { !$0.isEmpty }
+            let prefixHTML = paragraphs.isEmpty ? "<p>\(escaped)</p>" : paragraphs.map { "<p>\($0)</p>" }.joined()
+            bodyHTML = "\(prefixHTML)<br><br>\n\(bodyHTML)"
+        }
     }
 
     func toggleRecipient(_ recipient: Recipient) {

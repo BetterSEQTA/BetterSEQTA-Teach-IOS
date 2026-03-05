@@ -61,8 +61,16 @@ struct ComposeMessageView: View {
                 VStack(spacing: 0) {
                     FormattingToolbar(formatCommand: $formatCommand)
                     Divider()
-                    ComposeHTMLEditor(html: $viewModel.bodyHTML, colorScheme: colorScheme, formatCommand: $formatCommand)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    Group {
+                        if viewModel.isLoadingRecipients && viewModel.hasPrefillContent {
+                            ProgressView("Loading...")
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                .padding(.top, 60)
+                        } else {
+                            ComposeHTMLEditor(html: $viewModel.bodyHTML, initialContent: viewModel.bodyHTML, colorScheme: colorScheme, formatCommand: $formatCommand)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
+                    }
                 }
             }
             .navigationTitle(navigationTitle)
@@ -74,7 +82,7 @@ struct ComposeMessageView: View {
                         dismiss()
                     }
                 }
-                if AppleIntelligenceService.isAvailable {
+                if AppleIntelligenceService.isAvailable || CloudflareConfig.isAvailable {
                     ToolbarItem(placement: .primaryAction) {
                         Menu {
                             Button {
@@ -488,6 +496,7 @@ private struct FormattingToolbar: View {
 
 struct ComposeHTMLEditor: UIViewRepresentable {
     @Binding var html: String
+    let initialContent: String
     let colorScheme: ColorScheme
     @Binding var formatCommand: String?
 
@@ -551,7 +560,7 @@ struct ComposeHTMLEditor: UIViewRepresentable {
         webView.navigationDelegate = handler
 
         let isDark = colorScheme == .dark
-        let shell = Self.editorShellHTML("", isDark: isDark)
+        let shell = Self.editorShellHTML(initialContent, isDark: isDark)
         webView.loadHTMLString(shell, baseURL: nil)
         context.coordinator.hasLoaded = true
         context.coordinator.lastColorScheme = colorScheme
@@ -606,13 +615,19 @@ struct ComposeHTMLEditor: UIViewRepresentable {
 
         if coordinator.lastSetHTML != html {
             coordinator.lastSetHTML = html
-            let escaped = html
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "'", with: "\\'")
-                .replacingOccurrences(of: "\n", with: "\\n")
-                .replacingOccurrences(of: "\r", with: "")
+            let escaped = Self.escapeForJS(html)
             webView.evaluateJavaScript("setContent('\(escaped)')") { _, _ in }
+            if !html.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                coordinator.scheduleDelayedReinject(webView: webView, html: html)
+            }
         }
+    }
+
+    private static func escapeForJS(_ s: String) -> String {
+        s.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+            .replacingOccurrences(of: "\r", with: "")
+            .replacingOccurrences(of: "\n", with: "\\n")
     }
 
     func makeCoordinator() -> Coordinator {
@@ -695,9 +710,21 @@ struct ComposeHTMLEditor: UIViewRepresentable {
         var lastSetHTML: String?
         var lastColorScheme: ColorScheme?
         private var html: Binding<String>
+        private var reinjectWorkItem: DispatchWorkItem?
 
         init(html: Binding<String>) {
             self.html = html
+        }
+
+        func scheduleDelayedReinject(webView: WKWebView, html: String) {
+            reinjectWorkItem?.cancel()
+            let item = DispatchWorkItem { [weak self, weak webView] in
+                guard let self, let webView, self.isReady else { return }
+                let escaped = ComposeHTMLEditor.escapeForJS(html)
+                webView.evaluateJavaScript("setContent('\(escaped)')") { _, _ in }
+            }
+            reinjectWorkItem = item
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: item)
         }
 
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
@@ -722,12 +749,11 @@ struct ComposeHTMLEditor: UIViewRepresentable {
             if let pending = pendingHTML {
                 pendingHTML = nil
                 lastSetHTML = pending
-                let escaped = pending
-                    .replacingOccurrences(of: "\\", with: "\\\\")
-                    .replacingOccurrences(of: "'", with: "\\'")
-                    .replacingOccurrences(of: "\n", with: "\\n")
-                    .replacingOccurrences(of: "\r", with: "")
+                let escaped = ComposeHTMLEditor.escapeForJS(pending)
                 webView.evaluateJavaScript("setContent('\(escaped)')") { _, _ in }
+                if !pending.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    scheduleDelayedReinject(webView: webView, html: pending)
+                }
             }
         }
     }

@@ -15,3 +15,7 @@ DerivedData/
 
 # macOS
 .DS_Store
+
+# Cloudflare API credentials
+TechQTA/Config/CloudflareSecrets.plist
+.env

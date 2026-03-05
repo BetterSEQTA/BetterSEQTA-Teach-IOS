@@ -81,8 +81,8 @@ struct DireqtMessageDetailView: View {
                                 .foregroundStyle(.secondary)
                         }
 
-                        // Smart replies
-                        if AppleIntelligenceService.isAvailable, let body = detail.body, !body.isEmpty {
+                        // Smart replies (Apple Intelligence or Cloudflare Llama)
+                        if SmartReplyProvider.isAvailable, let body = detail.body, !body.isEmpty {
                             smartRepliesSection(body: body)
                         }
 
@@ -139,7 +139,7 @@ struct DireqtMessageDetailView: View {
                 prefillRecipientNames: detailPrefillRecipientsForReply,
                 prefillParticipants: detailPrefillParticipantsForReply,
                 prefillSubject: viewModel.detail?.subject,
-                prefillBodyHTML: quotePrefillBody,
+                prefillBodyHTML: prefillBodyForReply,
                 prefillBodyPrefix: replyWithSmartReply,
                 selfStaffId: sessionManager.staffId
             )
@@ -329,6 +329,16 @@ struct DireqtMessageDetailView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                } else if !smartReplies.isEmpty {
+                    Spacer()
+                    Button {
+                        FeedbackManager.doubleTap()
+                        loadSmartReplies(body: body, forceRegenerate: true)
+                    } label: {
+                        Text("Regenerate")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
 
@@ -370,19 +380,21 @@ struct DireqtMessageDetailView: View {
             }
         }
         .task(id: body) {
-            if smartReplies.isEmpty && !isLoadingSmartReplies {
+            if let cached = SmartReplyCache.get(messageID: messageID) {
+                smartReplies = cached
+            } else if smartReplies.isEmpty && !isLoadingSmartReplies {
                 loadSmartReplies(body: body)
             }
         }
     }
 
-    private func loadSmartReplies(body: String) {
+    private func loadSmartReplies(body: String, forceRegenerate: Bool = false) {
         guard !isLoadingSmartReplies else { return }
         isLoadingSmartReplies = true
-        smartReplies = []
+        if forceRegenerate { smartReplies = [] }
         Task {
             let plainText = body.plainTextFromHTML
-            let replies = await AppleIntelligenceService.suggestReplies(for: plainText)
+            let replies = await SmartReplyProvider.suggestReplies(for: plainText, messageID: messageID, forceRegenerate: forceRegenerate)
             await MainActor.run {
                 smartReplies = replies ?? []
                 isLoadingSmartReplies = false
@@ -520,6 +532,24 @@ struct DireqtMessageDetailView: View {
         \t<div class="body">\(original)</div>
         </blockquote>
         """
+    }
+
+    /// Full body for reply: when smart reply, prepend it using same HTML format as quote; else just the quote.
+    private var prefillBodyForReply: String? {
+        guard let quote = quotePrefillBody else { return nil }
+        guard let smart = replyWithSmartReply, !smart.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return quote
+        }
+        let escaped = smart
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+        let paragraphs = escaped.components(separatedBy: "\n\n")
+            .map { $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\n", with: "<br>") }
+            .filter { !$0.isEmpty }
+        let prefixHTML = paragraphs.isEmpty ? "<p>\(escaped)</p>" : paragraphs.map { "<p>\($0)</p>" }.joined()
+        return "\(prefixHTML)<br>\n<br>\n\(quote)"
     }
 
     private var previewPresentedBinding: Binding<Bool> {
