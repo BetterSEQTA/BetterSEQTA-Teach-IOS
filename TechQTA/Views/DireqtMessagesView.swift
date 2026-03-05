@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct DireqtMessagesView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var sessionManager: TeachSessionManager
     @StateObject private var viewModel = DireqtMessagesViewModel()
     @State private var showCompose = false
@@ -30,14 +31,14 @@ struct DireqtMessagesView: View {
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                     TextField("Search messages", text: $viewModel.searchText)
                         .font(.subheadline)
                 }
                 .padding(.horizontal, 16)
                 .frame(height: 44)
                 .background(Capsule().fill(.ultraThinMaterial))
-                .overlay(Capsule().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
+                .overlay(Capsule().strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.25 : 0.2), lineWidth: 0.5))
 
                 Button {
                     FeedbackManager.light()
@@ -46,13 +47,13 @@ struct DireqtMessagesView: View {
                     Image(systemName: "square.and.pencil")
                         .font(.title3)
                         .fontWeight(.semibold)
-                        .foregroundColor(.white)
+                        .foregroundStyle(.primary)
                         .frame(width: 56, height: 56)
                         .background(Circle().fill(.ultraThinMaterial))
-                        .overlay(Circle().strokeBorder(.white.opacity(0.25), lineWidth: 0.5))
+                        .overlay(Circle().strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.25 : 0.2), lineWidth: 0.5))
                 }
             }
-            .shadow(color: .black.opacity(0.12), radius: 12, y: 4)
+            .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 12, y: 4)
             .padding(.horizontal, 20)
             .padding(.bottom, 12)
         }

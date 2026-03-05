@@ -106,6 +106,7 @@ struct ContentView: View {
 // MARK: - Face ID Lock Overlay
 
 private struct FaceIDLockOverlay: View {
+    @Environment(\.colorScheme) private var colorScheme
     let onUnlock: () async -> Bool
     let onDismiss: () -> Void
     @State private var phase: OverlayPhase = .idle
@@ -118,9 +119,11 @@ private struct FaceIDLockOverlay: View {
         case failed
     }
 
+    private var isDark: Bool { colorScheme == .dark }
+
     var body: some View {
         ZStack {
-            Color.black.opacity(0.95)
+            (isDark ? Color.black : Color.white).opacity(isDark ? 0.95 : 0.98)
                 .ignoresSafeArea()
 
             VStack(spacing: 28) {
@@ -131,7 +134,7 @@ private struct FaceIDLockOverlay: View {
 
                     Image(systemName: phase == .success ? "checkmark.circle.fill" : (BiometricAuthHelper.biometricType == .faceID ? "faceid" : "touchid"))
                         .font(.system(size: phase == .success ? 56 : 52))
-                        .foregroundStyle(phase == .success ? .green : .white)
+                        .foregroundStyle(phase == .success ? .green : (isDark ? .white : .primary))
                         .symbolEffect(.bounce, value: phase == .success)
                 }
                 .scaleEffect(phase == .success ? 1.15 : 1.0)
@@ -141,7 +144,7 @@ private struct FaceIDLockOverlay: View {
                     Text(phase == .success ? "Unlocked" : "Unlock with \(BiometricAuthHelper.biometricTypeName)")
                         .font(.title2)
                         .fontWeight(.semibold)
-                        .foregroundStyle(.white)
+                        .foregroundStyle(isDark ? .white : .primary)
                 }
 
                 if phase == .failed {
@@ -153,7 +156,7 @@ private struct FaceIDLockOverlay: View {
                         Text("Try again")
                             .font(.subheadline)
                             .fontWeight(.medium)
-                            .foregroundStyle(.white.opacity(0.8))
+                            .foregroundStyle(isDark ? .white.opacity(0.8) : .primary.opacity(0.8))
                     }
                     .padding(.top, 8)
                 }
