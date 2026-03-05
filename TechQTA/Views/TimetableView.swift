@@ -80,7 +80,7 @@ struct TimetableView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
-                .contentMargins(.top, 8, for: .scrollContent)
+                .contentMargins(.top, 0, for: .scrollContent)
             }
         }
         .task(id: AppDateFormatters.isoYMD.string(from: viewModel.selectedDate) + "-\(sessionManager.staffId ?? 0)-\(sessionManager.session?.jsessionId ?? "")") {

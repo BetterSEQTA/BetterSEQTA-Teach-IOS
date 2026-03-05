@@ -226,6 +226,7 @@ struct DireqtMessagesView: View {
                     }
                 }
                 .listStyle(.plain)
+                .contentMargins(.top, 0, for: .scrollContent)
                 .refreshable {
                     await viewModel.refresh(session: sessionManager.session)
                 }

@@ -125,6 +125,7 @@ struct SettingsView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .contentMargins(.top, 0, for: .scrollContent)
         .sheet(isPresented: $showAbout) {
             AboutSheet()
         }

@@ -159,8 +159,8 @@ struct HomePlaceholderView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .listSectionSpacing(16)
         .contentMargins(.top, 0, for: .scrollContent)
+        .listSectionSpacing(16)
     }
 
     @ViewBuilder

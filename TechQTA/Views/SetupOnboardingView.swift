@@ -113,6 +113,7 @@ struct SetupOnboardingView: View {
             }
             .padding(28)
         }
+        .contentMargins(.top, 0, for: .scrollContent)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
         .padding(.horizontal, 20)
     }
