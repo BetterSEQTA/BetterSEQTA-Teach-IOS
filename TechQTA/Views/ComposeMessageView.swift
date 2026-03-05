@@ -9,6 +9,7 @@ struct ComposeMessageView: View {
     @StateObject private var viewModel: ComposeMessageViewModel
     @State private var showRecipientPicker = false
     @State private var toSearchText: String = ""
+    @State private var formatCommand: String?
     @FocusState private var toFieldFocused: Bool
     @FocusState private var subjectFocused: Bool
 
@@ -54,9 +55,13 @@ struct ComposeMessageView: View {
 
                 Divider()
 
-                // HTML Editor
-                ComposeHTMLEditor(html: $viewModel.bodyHTML, colorScheme: colorScheme)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // Formatting toolbar + HTML Editor
+                VStack(spacing: 0) {
+                    FormattingToolbar(formatCommand: $formatCommand)
+                    Divider()
+                    ComposeHTMLEditor(html: $viewModel.bodyHTML, colorScheme: colorScheme, formatCommand: $formatCommand)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.large)
@@ -65,6 +70,48 @@ struct ComposeMessageView: View {
                     Button("Cancel") {
                         FeedbackManager.light()
                         dismiss()
+                    }
+                }
+                if AppleIntelligenceService.isAvailable {
+                    ToolbarItem(placement: .primaryAction) {
+                        Menu {
+                            Button {
+                                FeedbackManager.light()
+                                Task { await viewModel.proofreadBody() }
+                            } label: {
+                                Label("Proofread", systemImage: "text.badge.checkmark")
+                            }
+                            .disabled(viewModel.isAIProcessing)
+                            Divider()
+                            Button {
+                                FeedbackManager.light()
+                                Task { await viewModel.changeBodyTone(to: "professional") }
+                            } label: {
+                                Label("Professional", systemImage: "briefcase")
+                            }
+                            .disabled(viewModel.isAIProcessing)
+                            Button {
+                                FeedbackManager.light()
+                                Task { await viewModel.changeBodyTone(to: "friendly") }
+                            } label: {
+                                Label("Friendly", systemImage: "hand.wave")
+                            }
+                            .disabled(viewModel.isAIProcessing)
+                            Button {
+                                FeedbackManager.light()
+                                Task { await viewModel.changeBodyTone(to: "concise") }
+                            } label: {
+                                Label("Concise", systemImage: "text.alignleft")
+                            }
+                            .disabled(viewModel.isAIProcessing)
+                        } label: {
+                            if viewModel.isAIProcessing {
+                                ProgressView()
+                                    .controlSize(.small)
+                            } else {
+                                Image(systemName: "sparkles")
+                            }
+                        }
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
@@ -86,6 +133,13 @@ struct ComposeMessageView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text(viewModel.sendError ?? "")
+            }
+            .alert("Apple Intelligence", isPresented: aiErrorPresented) {
+                Button("OK", role: .cancel) {
+                    viewModel.clearAIError()
+                }
+            } message: {
+                Text(viewModel.aiError ?? "")
             }
             .sheet(isPresented: $showRecipientPicker) {
                 RecipientPickerView(viewModel: viewModel)
@@ -117,6 +171,10 @@ struct ComposeMessageView: View {
 
     private var sendErrorPresented: Binding<Bool> {
         Binding(get: { viewModel.sendError != nil }, set: { if !$0 { viewModel.clearSendError() } })
+    }
+
+    private var aiErrorPresented: Binding<Bool> {
+        Binding(get: { viewModel.aiError != nil }, set: { if !$0 { viewModel.clearAIError() } })
     }
 
     // MARK: - Recipient Section
@@ -380,11 +438,55 @@ private struct RecipientPickerView: View {
     }
 }
 
+// MARK: - Formatting Toolbar
+
+private struct FormattingToolbar: View {
+    @Binding var formatCommand: String?
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 4) {
+                formatButton("bold", systemImage: "bold")
+                formatButton("italic", systemImage: "italic")
+                formatButton("underline", systemImage: "underline")
+                formatButton("strikeThrough", systemImage: "strikethrough")
+                Divider()
+                    .frame(height: 20)
+                formatButton("h1", systemImage: "textformat.size.larger", label: "H1")
+                formatButton("h2", systemImage: "textformat.size", label: "H2")
+                formatButton("h3", systemImage: "textformat.size.smaller", label: "H3")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+        }
+        .background(Color(.secondarySystemBackground))
+    }
+
+    private func formatButton(_ command: String, systemImage: String, label: String? = nil) -> some View {
+        Button {
+            FeedbackManager.light()
+            formatCommand = command
+        } label: {
+            if let label {
+                Text(label)
+                    .font(.caption)
+                    .fontWeight(.semibold)
+            } else {
+                Image(systemName: systemImage)
+                    .font(.system(size: 14))
+            }
+        }
+        .frame(width: 36, height: 32)
+        .contentShape(Rectangle())
+    }
+}
+
 // MARK: - HTML Compose Editor (WKWebView contenteditable)
 
 struct ComposeHTMLEditor: UIViewRepresentable {
     @Binding var html: String
     let colorScheme: ColorScheme
+    @Binding var formatCommand: String?
 
     private static func editorCSS(isDark: Bool) -> String {
         let textColor = isDark ? "#ffffff" : "#000000"
@@ -426,6 +528,9 @@ struct ComposeHTMLEditor: UIViewRepresentable {
           blockquote.forward .preamble .label {
             font-weight: 600;
           }
+          h1 { font-size: 1.5em; font-weight: 700; margin: 0.5em 0; }
+          h2 { font-size: 1.25em; font-weight: 600; margin: 0.5em 0; }
+          h3 { font-size: 1.1em; font-weight: 600; margin: 0.5em 0; }
         """
     }
 
@@ -467,6 +572,32 @@ struct ComposeHTMLEditor: UIViewRepresentable {
 
         guard coordinator.isReady else {
             coordinator.pendingHTML = html
+            return
+        }
+
+        if let cmd = formatCommand {
+            formatCommand = nil
+            let js: String
+            if ["h1", "h2", "h3"].contains(cmd) {
+                js = """
+                (function(){
+                  var e = document.getElementById('editor');
+                  e.focus();
+                  document.execCommand('formatBlock', false, '\(cmd)');
+                  window.webkit.messageHandlers.htmlChanged.postMessage(e.innerHTML);
+                })();
+                """
+            } else {
+                js = """
+                (function(){
+                  var e = document.getElementById('editor');
+                  e.focus();
+                  document.execCommand('\(cmd)', false, null);
+                  window.webkit.messageHandlers.htmlChanged.postMessage(e.innerHTML);
+                })();
+                """
+            }
+            webView.evaluateJavaScript(js) { _, _ in }
             return
         }
 

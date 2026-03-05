@@ -20,6 +20,8 @@ final class ComposeMessageViewModel: ObservableObject {
     @Published private(set) var isSending = false
     @Published private(set) var sendError: String?
     @Published var didSend = false
+    @Published private(set) var isAIProcessing = false
+    @Published var aiError: String?
 
     let mode: ComposeMode
     private let client: TeachMessagesClient
@@ -79,6 +81,50 @@ final class ComposeMessageViewModel: ObservableObject {
 
     func clearSendError() {
         sendError = nil
+    }
+
+    func clearAIError() {
+        aiError = nil
+    }
+
+    func proofreadBody() async {
+        guard AppleIntelligenceService.isAvailable else {
+            aiError = "Apple Intelligence is not available on this device."
+            return
+        }
+        let plainText = bodyHTML.plainTextFromHTML
+        guard !plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            aiError = "Add some text to proofread."
+            return
+        }
+        isAIProcessing = true
+        aiError = nil
+        if let result = await AppleIntelligenceService.proofread(plainText) {
+            bodyHTML = result.wrappedInHTMLParagraphs
+        } else {
+            aiError = "Proofreading failed. Please try again."
+        }
+        isAIProcessing = false
+    }
+
+    func changeBodyTone(to tone: String) async {
+        guard AppleIntelligenceService.isAvailable else {
+            aiError = "Apple Intelligence is not available on this device."
+            return
+        }
+        let plainText = bodyHTML.plainTextFromHTML
+        guard !plainText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            aiError = "Add some text to rewrite."
+            return
+        }
+        isAIProcessing = true
+        aiError = nil
+        if let result = await AppleIntelligenceService.changeTone(plainText, to: tone) {
+            bodyHTML = result.wrappedInHTMLParagraphs
+        } else {
+            aiError = "Could not change tone. Please try again."
+        }
+        isAIProcessing = false
     }
 
     func send(session: TeachSession?) async {

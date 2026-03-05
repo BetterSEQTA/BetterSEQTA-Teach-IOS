@@ -18,6 +18,9 @@ struct DireqtMessageDetailView: View {
     @State private var showReplyAllComposer = false
     @State private var showForwardComposer = false
     @State private var webViewHeight: CGFloat = 120
+    @State private var smartReplies: [String] = []
+    @State private var isLoadingSmartReplies = false
+    @State private var replyWithSmartReply: String?
 
     var body: some View {
         Group {
@@ -78,6 +81,11 @@ struct DireqtMessageDetailView: View {
                                 .foregroundStyle(.secondary)
                         }
 
+                        // Smart replies
+                        if AppleIntelligenceService.isAvailable, let body = detail.body, !body.isEmpty {
+                            smartRepliesSection(body: body)
+                        }
+
                         // Attachments
                         if !detail.files.isEmpty {
                             Divider()
@@ -131,9 +139,10 @@ struct DireqtMessageDetailView: View {
                 prefillRecipientNames: detailPrefillRecipientsForReply,
                 prefillParticipants: detailPrefillParticipantsForReply,
                 prefillSubject: viewModel.detail?.subject,
-                prefillBodyHTML: quotePrefillBody,
+                prefillBodyHTML: replyPrefillBody,
                 selfStaffId: sessionManager.staffId
             )
+            .onDisappear { replyWithSmartReply = nil }
         }
         .fullScreenCover(isPresented: $showReplyAllComposer) {
             ComposeMessageView(
@@ -185,6 +194,7 @@ struct DireqtMessageDetailView: View {
 
             Button {
                 FeedbackManager.light()
+                replyWithSmartReply = nil
                 showReplyComposer = true
             } label: {
                 Label("Reply", systemImage: "arrowshape.turn.up.left")
@@ -299,6 +309,71 @@ struct DireqtMessageDetailView: View {
         }
     }
 
+    // MARK: - Smart Replies
+
+    @ViewBuilder
+    private func smartRepliesSection(body: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Smart replies", systemImage: "sparkles")
+                    .font(.headline)
+                if isLoadingSmartReplies {
+                    Spacer()
+                    ProgressView()
+                        .scaleEffect(0.8)
+                }
+            }
+
+            if smartReplies.isEmpty && !isLoadingSmartReplies {
+                Button {
+                    FeedbackManager.light()
+                    loadSmartReplies(body: body)
+                } label: {
+                    Label("Suggest replies", systemImage: "text.bubble")
+                        .font(.subheadline)
+                }
+            } else if !smartReplies.isEmpty {
+                FlowLayout(spacing: 8) {
+                    ForEach(smartReplies, id: \.self) { reply in
+                        Button {
+                            FeedbackManager.light()
+                            replyWithSmartReply = reply
+                            showReplyComposer = true
+                        } label: {
+                            Text(reply)
+                                .font(.subheadline)
+                                .lineLimit(2)
+                                .multilineTextAlignment(.leading)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .task(id: body) {
+            if smartReplies.isEmpty && !isLoadingSmartReplies {
+                loadSmartReplies(body: body)
+            }
+        }
+    }
+
+    private func loadSmartReplies(body: String) {
+        guard !isLoadingSmartReplies else { return }
+        isLoadingSmartReplies = true
+        smartReplies = []
+        Task {
+            let plainText = body.plainTextFromHTML
+            let replies = await AppleIntelligenceService.suggestReplies(for: plainText)
+            await MainActor.run {
+                smartReplies = replies ?? []
+                isLoadingSmartReplies = false
+            }
+        }
+    }
+
     // MARK: - Attachments
 
     @ViewBuilder
@@ -404,6 +479,17 @@ struct DireqtMessageDetailView: View {
             }
         }
         return all
+    }
+
+    private var replyPrefillBody: String? {
+        if let reply = replyWithSmartReply {
+            let escaped = reply
+                .replacingOccurrences(of: "&", with: "&amp;")
+                .replacingOccurrences(of: "<", with: "&lt;")
+                .replacingOccurrences(of: ">", with: "&gt;")
+            return "<p>\(escaped)</p><br><br>\n\(quotePrefillBody ?? "")"
+        }
+        return quotePrefillBody
     }
 
     private var quotePrefillBody: String? {
