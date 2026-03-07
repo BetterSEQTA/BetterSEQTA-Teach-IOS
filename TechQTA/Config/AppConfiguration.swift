@@ -33,6 +33,7 @@ enum AppConfiguration {
               let token = dict["CFAuthToken"] as? String,
               !token.isEmpty,
               token != "YOUR_AUTH_TOKEN" else { return nil }
+        return token
     }
     
     /// Retrieves the Cloudflare API Key from Info.plist.
