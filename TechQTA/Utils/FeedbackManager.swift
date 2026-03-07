@@ -56,21 +56,21 @@ enum FeedbackManager {
         UISelectionFeedbackGenerator().selectionChanged()
     }
 
-    /// Soft impact – tap to cycle, small button taps
+    /// Soft impact – tap to cycle, small button taps (reduced intensity)
     static func light() {
         let gen = UIImpactFeedbackGenerator(style: .light)
         gen.impactOccurred()
     }
 
-    /// Medium impact – swipe to mark, navigation, important taps
+    /// Light-medium impact – swipe to mark, navigation (reduced from medium)
     static func medium() {
-        let gen = UIImpactFeedbackGenerator(style: .medium)
+        let gen = UIImpactFeedbackGenerator(style: .light)
         gen.impactOccurred()
     }
 
-    /// Heavy impact – save, major actions
+    /// Medium impact – save, major actions (reduced from heavy)
     static func heavy() {
-        let gen = UIImpactFeedbackGenerator(style: .heavy)
+        let gen = UIImpactFeedbackGenerator(style: .medium)
         gen.impactOccurred()
     }
 
@@ -94,14 +94,14 @@ enum FeedbackManager {
 
     // MARK: - Custom Haptic Patterns (Core Haptics)
 
-    /// Two quick taps – tab changes, list selection, secondary actions
+    /// Two quick taps – tab changes, list selection, secondary actions (reduced intensity)
     static func doubleTap() {
         let e1 = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0)
         let e2 = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0.08)
         playPattern([e1, e2])
     }
 
-    /// Three quick taps – date navigation, cycle actions, quick sequences
+    /// Three quick taps – date navigation, cycle actions, quick sequences (reduced intensity)
     static func tripleTap() {
         let e1 = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0)
         let e2 = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0.07)
@@ -109,16 +109,16 @@ enum FeedbackManager {
         playPattern([e1, e2, e3])
     }
 
-    /// Long sustained vibration – major completion, significant state change
+    /// Long sustained vibration – major completion (reduced duration from 0.4s to 0.25s)
     static func longVibration() {
-        let e = CHHapticEvent(eventType: .hapticContinuous, parameters: [], relativeTime: 0, duration: 0.4)
+        let e = CHHapticEvent(eventType: .hapticContinuous, parameters: [], relativeTime: 0, duration: 0.25)
         playPattern([e])
     }
 
-    /// Long buzz then short tap – primary actions (Send, Save)
+    /// Long buzz then short tap – primary actions (Send, Save) (reduced intensity and duration)
     static func longThenShort() {
-        let long = CHHapticEvent(eventType: .hapticContinuous, parameters: [], relativeTime: 0, duration: 0.25)
-        let short = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0.28)
+        let long = CHHapticEvent(eventType: .hapticContinuous, parameters: [], relativeTime: 0, duration: 0.15)
+        let short = CHHapticEvent(eventType: .hapticTransient, parameters: [], relativeTime: 0.20)
         playPattern([long, short])
     }
 

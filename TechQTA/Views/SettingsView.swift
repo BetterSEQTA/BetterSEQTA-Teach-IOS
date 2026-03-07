@@ -44,8 +44,6 @@ struct SettingsView: View {
 
                 Section {
                     Button(role: .destructive) {
-                        FeedbackManager.warning()
-                        FeedbackManager.longVibration()
                         sessionManager.logout()
                     } label: {
                         Label("Log out", systemImage: "rectangle.portrait.and.arrow.right")
@@ -76,9 +74,6 @@ struct SettingsView: View {
                 } label: {
                     Label("Attendance view", systemImage: "rectangle.stack")
                 }
-                .onChange(of: attendanceViewMode) { _, _ in
-                    FeedbackManager.doubleTap()
-                }
             } header: {
                 Text("Attendance")
             } footer: {
@@ -90,17 +85,6 @@ struct SettingsView: View {
                     Toggle(isOn: $faceIDEnabled) {
                         Label("Require \(BiometricAuthHelper.biometricTypeName) to open", systemImage: "faceid")
                     }
-                    .onChange(of: faceIDEnabled) { _, newValue in
-                        FeedbackManager.doubleTap()
-                        if newValue {
-                            Task {
-                                let success = await BiometricAuthHelper.authenticate(reason: "Enable \(BiometricAuthHelper.biometricTypeName) to unlock the app")
-                                if !success {
-                                    await MainActor.run { faceIDEnabled = false }
-                                }
-                            }
-                        }
-                    }
                 } header: {
                     Text("Security")
                 } footer: {
@@ -110,13 +94,11 @@ struct SettingsView: View {
 
             Section {
                 Button {
-                    FeedbackManager.doubleTap()
                     showAbout = true
                 } label: {
                     Label("About", systemImage: "info.circle")
                 }
                 Button {
-                    FeedbackManager.doubleTap()
                     showPrivacy = true
                 } label: {
                     Label("Privacy", systemImage: "hand.raised")

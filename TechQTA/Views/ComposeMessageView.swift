@@ -156,14 +156,11 @@ struct ComposeMessageView: View {
             }
             .onChange(of: viewModel.didSend) {
                 if viewModel.didSend {
-                    FeedbackManager.success()
-                    FeedbackManager.longVibration()
-                    FeedbackManager.playSuccess()
                     dismiss()
                 }
             }
             .onChange(of: viewModel.sendError) { _, newValue in
-                if newValue != nil { FeedbackManager.error() }
+                if newValue != nil { }
             }
             .task {
                 await viewModel.loadRecipients(session: sessionManager.session)
