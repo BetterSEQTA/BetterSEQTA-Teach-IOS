@@ -1,6 +1,6 @@
 # TechQTA
 
-TechQTA is a small, opinionated iPhone app that gives SEQTA Teach users a cleaner, faster way to see the things they check all the time: **today’s classes** and **Direqt messages**.
+TechQTA is a small, opinionated iPhone (soon android port) app that gives SEQTA Teach users a cleaner, faster way to see the things they check all the time: **today’s classes** and **Direqt messages**.
 
 It sits on top of your existing SEQTA Teach site – you log in the same way you do in the browser – and then keeps a lightweight, read‑only view of your day in your pocket.
 
