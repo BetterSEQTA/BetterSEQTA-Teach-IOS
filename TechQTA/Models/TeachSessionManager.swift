@@ -29,6 +29,8 @@ final class TeachSessionManager: ObservableObject {
 
     @Published private(set) var session: TeachSession?
     @Published private(set) var staffId: Int?
+    @Published private(set) var displayName: String?
+    @Published private(set) var userCode: String?
     @Published private(set) var loginStatus: LoginStatus = .loggedOut
     @Published private(set) var heartbeatStatus: HeartbeatStatus = .idle
 
@@ -54,7 +56,7 @@ final class TeachSessionManager: ObservableObject {
         loginStatus = .loggedIn
         Task {
             await persistSession()
-            await fetchStaffIdIfNeeded()
+            await fetchStaffIdAndUserInfoIfNeeded()
         }
     }
 
@@ -66,6 +68,8 @@ final class TeachSessionManager: ObservableObject {
     func logout() {
         session = nil
         staffId = nil
+        displayName = nil
+        userCode = nil
         loginStatus = .loggedOut
         heartbeatStatus = .idle
         onLogout?()
@@ -111,15 +115,18 @@ final class TeachSessionManager: ObservableObject {
         let restored = TeachSession(baseUrl: baseUrl, jsessionId: jsessionId, lastHeartbeatAt: nil)
         session = restored
         loginStatus = .loggedIn
-        await fetchStaffIdIfNeeded()
+        await fetchStaffIdAndUserInfoIfNeeded()
     }
 
-    func fetchStaffIdIfNeeded() async {
+    func fetchStaffIdAndUserInfoIfNeeded() async {
         guard let s = session else { return }
-        guard staffId == nil else { return }
+        guard staffId == nil || displayName == nil || userCode == nil else { return }
         do {
             let id = try await userClient.getStaffId(session: s)
             staffId = id
+            let (name, code) = try await userClient.getUserInfo(session: s)
+            if let name = name, !name.isEmpty { displayName = name }
+            if let code = code, !code.isEmpty { userCode = code }
         } catch {
             // Non-fatal; views can retry or show limited UI
         }
@@ -135,4 +142,5 @@ final class TeachSessionManager: ObservableObject {
         sessionStore.removeObject(forKey: baseUrlKey)
         try? KeychainHelper.delete(key: keychainKey)
     }
+
 }

@@ -24,7 +24,7 @@ final class TimetableViewModel: ObservableObject {
         lessons = []
 
         if sessionManager.staffId == nil {
-            await sessionManager.fetchStaffIdIfNeeded()
+            await sessionManager.fetchStaffIdAndUserInfoIfNeeded()
         }
 
         guard let staffId = sessionManager.staffId else {

@@ -51,7 +51,7 @@ final class HomeDashboardViewModel: ObservableObject {
         lessonsError = nil
 
         if sessionManager.staffId == nil {
-            await sessionManager.fetchStaffIdIfNeeded()
+            await sessionManager.fetchStaffIdAndUserInfoIfNeeded()
         }
 
         if let staffId = sessionManager.staffId {

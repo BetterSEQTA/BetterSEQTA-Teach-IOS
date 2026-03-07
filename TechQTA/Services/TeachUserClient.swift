@@ -72,6 +72,25 @@ struct TeachUserClient {
         return nil
     }
 
+    /// Returns displayName (userDesc) and userCode from the login endpoint payload.
+    func getUserInfo(session: TeachSession) async throws -> (displayName: String?, userCode: String?) {
+        let redirectUrl = buildRedirectUrl(session.baseUrl)
+        let body: [String: Any] = [
+            "mode": "normal",
+            "query": NSNull(),
+            "redirect_url": redirectUrl
+        ]
+        let (data, response) = try await seqtaPOST(session: session, path: "/seqta/ta/login", body: body)
+        guard (200...299).contains(response.statusCode) else {
+            throw SeqtaRequestError.invalidURL
+        }
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let payload = json?["payload"] as? [String: Any]
+        let displayName = (payload?["userDesc"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let userCode = (payload?["userCode"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (displayName, userCode)
+    }
+
     private func buildRedirectUrl(_ baseUrl: URL) -> String {
         let baseString = baseUrl.absoluteString
         let trimmed = baseString.hasSuffix("/") ? String(baseString.dropLast()) : baseString

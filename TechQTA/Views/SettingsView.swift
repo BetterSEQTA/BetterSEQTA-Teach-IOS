@@ -33,6 +33,28 @@ struct SettingsView: View {
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
+
+                            if sessionManager.displayName != nil || sessionManager.userCode != nil || sessionManager.staffId != nil {
+                                Image(systemName: "person.crop.circle")
+                                    .font(.title2)
+                                    .foregroundStyle(.tint)
+                                    .frame(width: 40, height: 40)
+
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(sessionManager.displayName ?? (sessionManager.staffId.map { "Staff \($0)" } ?? "User"))
+                                        .font(.headline)
+                                        .fontWeight(.semibold)
+                                    if let userCode = sessionManager.userCode, !userCode.isEmpty {
+                                        Text(userCode)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    } else if let staffId = sessionManager.staffId {
+                                        Text("Staff ID \(staffId)")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
                         }
 
                         heartbeatStatusView

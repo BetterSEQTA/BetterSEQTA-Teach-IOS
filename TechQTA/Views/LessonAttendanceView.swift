@@ -209,7 +209,6 @@ struct LessonAttendanceView: View {
                 ForEach(students) { student in
                     studentRow(student)
                         .contentShape(Rectangle())
-                        .animation(.easeInOut(duration: 0.2), value: effectiveCode(for: student))
                         .onTapGesture {
                             cycleAttendance(for: student)
                         }
@@ -520,30 +519,31 @@ Button {
             Circle()
                 .fill(Color.blue.opacity(0.1))
                 .frame(width: 40, height: 40)
-                .overlay {
-                    Text(String((student.prefname ?? student.firstname).prefix(1)))
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.blue)
-                }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(student.prefname ?? student.firstname)
                     .font(.subheadline)
                     .fontWeight(.semibold)
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
                 Text(student.surname)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .transition(.opacity.combined(with: .move(edge: .trailing)))
                 if let rollgroup = student.rollgroupname, !rollgroup.isEmpty {
                     Text(rollgroup)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
             }
 
             Spacer()
 
             attendanceStatusBadge(for: student)
+                .transition(.asymmetric(
+                    insertion: .move(edge: .trailing).combined(with: .opacity),
+                    removal: .move(edge: .leading).combined(with: .opacity)
+                ))
         }
         .padding(.vertical, 8)
     }
