@@ -18,4 +18,5 @@ DerivedData/
 
 # Cloudflare API credentials
 TechQTA/Config/CloudflareSecrets.plist
+TechQTA/Config/Secrets.xcconfig
 .env
