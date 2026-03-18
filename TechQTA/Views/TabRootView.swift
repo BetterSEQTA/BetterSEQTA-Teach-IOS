@@ -10,6 +10,7 @@ import SwiftUI
 enum AppTab: Hashable {
     case home
     case timetable
+    case notices
     case messages
     case settings
 }
@@ -36,6 +37,14 @@ struct TabRootView: View {
                 Label("Timetable", systemImage: "calendar")
             }
             .tag(AppTab.timetable)
+
+            tabContainer(title: "Notices") {
+                NoticesView()
+            }
+            .tabItem {
+                Label("Notices", systemImage: "doc.text")
+            }
+            .tag(AppTab.notices)
 
             NavigationStack(path: $messagesPath) {
                 DireqtMessagesView()
