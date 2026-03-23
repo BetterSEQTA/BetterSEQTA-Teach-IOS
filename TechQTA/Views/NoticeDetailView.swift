@@ -14,48 +14,67 @@ struct NoticeDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                // Title and metadata
-                VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .center, spacing: 16) {
+                // Title and metadata (centered pills)
+                VStack(alignment: .center, spacing: 12) {
                     Text(notice.title)
                         .font(.title2)
                         .fontWeight(.bold)
                         .foregroundStyle(.primary)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
 
-                    HStack(spacing: 12) {
+                    HStack(alignment: .top, spacing: 3) {
                         if let labelTitle = notice.labelTitle, !labelTitle.isEmpty {
-                            HStack(spacing: 4) {
-                                if let hex = notice.colour {
-                                    Circle()
-                                        .fill(Color(hex: hex))
-                                        .frame(width: 8, height: 8)
+                            DetailMetaPill {
+                                VStack(alignment: .center, spacing: 6) {
+                                    if let hex = notice.colour {
+                                        Circle()
+                                            .fill(Color(hex: hex))
+                                            .frame(width: 8, height: 8)
+                                    }
+                                    Text(labelTitle)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.primary)
+                                        .multilineTextAlignment(.center)
+                                        .fixedSize(horizontal: false, vertical: true)
                                 }
-                                Text(labelTitle)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
                             }
+                            .frame(maxWidth: .infinity)
                         }
                         if let staff = notice.staff {
-                            HStack(spacing: 4) {
-                                Image(systemName: "person.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                Text(staff)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                            DetailMetaPill {
+                                VStack(alignment: .center, spacing: 6) {
+                                    Image(systemName: "person.fill")
+                                        .font(.footnote)
+                                    Text(staff)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.primary)
+                                        .multilineTextAlignment(.center)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             }
+                            .frame(maxWidth: .infinity)
                         }
                         if let from = notice.from {
-                            HStack(spacing: 4) {
-                                Image(systemName: "calendar")
-                                    .font(.caption)
-                                    .foregroundStyle(.tertiary)
-                                Text(from)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                            DetailMetaPill {
+                                VStack(alignment: .center, spacing: 6) {
+                                    Image(systemName: "calendar")
+                                        .font(.footnote)
+                                    Text(from)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.secondary)
+                                        .multilineTextAlignment(.center)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                }
                             }
+                            .frame(maxWidth: .infinity)
                         }
                     }
+                    .frame(maxWidth: .infinity)
                 }
 
                 Divider()
@@ -75,6 +94,23 @@ struct NoticeDetailView: View {
         }
         .navigationTitle("Notice")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+// MARK: - Detail metadata pills
+
+private struct DetailMetaPill<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content()
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color(.systemGray6))
+            )
     }
 }
 

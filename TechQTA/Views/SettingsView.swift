@@ -14,46 +14,42 @@ struct SettingsView: View {
     @State private var showAbout = false
     @State private var showPrivacy = false
 
+    private var accountDisplayName: String {
+        if let name = sessionManager.displayName, !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return name
+        }
+        if let staffId = sessionManager.staffId {
+            return "Staff \(staffId)"
+        }
+        return "User"
+    }
+
     var body: some View {
         List {
             if let session = sessionManager.session {
                 Section {
                     VStack(alignment: .leading, spacing: 12) {
-                        HStack(spacing: 12) {
-                            Image(systemName: "globe")
-                                .font(.title2)
+                        HStack(alignment: .top, spacing: 14) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .font(.system(size: 40))
                                 .foregroundStyle(.tint)
-                                .frame(width: 40, height: 40)
+                                .symbolRenderingMode(.hierarchical)
+                                .frame(width: 44, height: 44)
 
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(session.hostDisplay)
-                                    .font(.headline)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(accountDisplayName)
+                                    .font(.title3)
                                     .fontWeight(.semibold)
-                                Text(session.jsessionId.isEmpty ? "Not connected" : "Session active")
+                                    .foregroundStyle(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                                Text(session.baseUrl.absoluteString)
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
-                            }
-
-                            if sessionManager.displayName != nil || sessionManager.userCode != nil || sessionManager.staffId != nil {
-                                Image(systemName: "person.crop.circle")
-                                    .font(.title2)
-                                    .foregroundStyle(.tint)
-                                    .frame(width: 40, height: 40)
-
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(sessionManager.displayName ?? (sessionManager.staffId.map { "Staff \($0)" } ?? "User"))
-                                        .font(.headline)
-                                        .fontWeight(.semibold)
-                                    if let userCode = sessionManager.userCode, !userCode.isEmpty {
-                                        Text(userCode)
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    } else if let staffId = sessionManager.staffId {
-                                        Text("Staff ID \(staffId)")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
+                                    .textSelection(.enabled)
+                                    .lineLimit(3)
+                                    .minimumScaleFactor(0.85)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
 

@@ -89,7 +89,7 @@ struct NoticesView: View {
 
     @ViewBuilder
     private func noticeRow(_ notice: TeachNotice) -> some View {
-        HStack(alignment: .center, spacing: 14) {
+        HStack(alignment: .top, spacing: 14) {
             Circle()
                 .fill(labelColor(notice.colour).opacity(0.15))
                 .frame(width: 48, height: 48)
@@ -99,39 +99,51 @@ struct NoticesView: View {
                         .foregroundStyle(labelColor(notice.colour))
                 }
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .center, spacing: 10) {
                 Text(notice.title)
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
-                    .lineLimit(2)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
 
-                HStack(spacing: 6) {
+                HStack(alignment: .top, spacing: 8) {
                     if let labelTitle = notice.labelTitle, !labelTitle.isEmpty {
-                        Text(labelTitle)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("·")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                        VStack(alignment: .center, spacing: 4) {
+                            if let hex = notice.colour {
+                                Circle()
+                                    .fill(Color(hex: hex))
+                                    .frame(width: 6, height: 6)
+                            }
+                            Text(labelTitle)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                     if let staff = notice.staff {
-                        Text(staff)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        Text("·")
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    }
-                    if let from = notice.from {
-                        Text(from)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
+                        VStack(alignment: .center, spacing: 4) {
+                            Image(systemName: "person.fill")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                            Text(staff)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
                 }
+                .frame(maxWidth: .infinity)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
     }
 
     private func labelColor(_ hex: String?) -> Color {

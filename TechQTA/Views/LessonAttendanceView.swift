@@ -236,24 +236,82 @@ struct LessonAttendanceView: View {
             } header: {
                 Text("Students")
             } footer: {
-                HStack(spacing: 6) {
-                    Image(systemName: "hand.tap.fill")
-                        .font(.caption2)
-                    Text("Tap to cycle")
-                    Text("•")
-                    Image(systemName: "arrow.left.arrow.right")
-                        .font(.caption2)
-                    Text("Swipe left = No, right = Yes")
-                    Text("•")
-                    Image(systemName: "hand.raised.fill")
-                        .font(.caption2)
-                    Text("Long press for more")
+                HStack(alignment: .top, spacing: 3) {
+                    attendanceInstructionPill(
+                        icon: "hand.tap.fill",
+                        text: "Tap to cycle",
+                        font: .caption
+                    )
+                    .frame(maxWidth: .infinity)
+                    attendanceInstructionPill(
+                        icon: "arrow.left.arrow.right",
+                        text: "Swipe left = No, right = Yes",
+                        font: .caption
+                    )
+                    .frame(maxWidth: .infinity)
+                    attendanceInstructionPill(
+                        icon: "hand.raised.fill",
+                        text: "Long press for more",
+                        font: .caption
+                    )
+                    .frame(maxWidth: .infinity)
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity)
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    private var cardModeFooter: some View {
+        VStack(spacing: 12) {
+            HStack(spacing: 24) {
+                if cardIndex > 0 {
+                    Button {
+                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                            cardIndex -= 1
+                        }
+                    } label: {
+                        Label("Previous", systemImage: "chevron.left")
+                            .font(.subheadline)
+                    }
+                }
+                Spacer()
+                Button {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        cardIndex += 1
+                    }
+                } label: {
+                    Label("Skip", systemImage: "forward.fill")
+                        .font(.subheadline)
+                }
+            }
+            HStack(alignment: .top, spacing: 3) {
+                attendanceInstructionPill(
+                    icon: "arrow.right.circle.fill",
+                    text: "Swipe right = Here",
+                    foreground: Color.secondary,
+                    font: .caption
+                )
+                .frame(maxWidth: .infinity)
+                attendanceInstructionPill(
+                    icon: "arrow.left.circle.fill",
+                    text: "Swipe left = Not here",
+                    foreground: Color.secondary,
+                    font: .caption
+                )
+                .frame(maxWidth: .infinity)
+                attendanceInstructionPill(
+                    icon: "hand.raised.fill",
+                    text: "Long press for more",
+                    foreground: Color.secondary.opacity(0.75),
+                    font: .caption
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 24)
+        .padding(.bottom, 16)
     }
 
     @ViewBuilder
@@ -367,34 +425,7 @@ struct LessonAttendanceView: View {
                 .padding(.horizontal, 20)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                VStack(spacing: 8) {
-                    HStack(spacing: 24) {
-                        if cardIndex > 0 {
-                            Button {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                    cardIndex -= 1
-                                }
-                            } label: {
-                                Label("Previous", systemImage: "chevron.left")
-                                    .font(.subheadline)
-                            }
-                        }
-                        Spacer()
-Button {
-                                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
-                                    cardIndex += 1
-                                }
-                            } label: {
-                                Label("Skip", systemImage: "forward.fill")
-                                .font(.subheadline)
-                        }
-                    }
-                    Text("Swipe right = Here · Swipe left = Not here · Long press for more")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
+                cardModeFooter
             }
         }
     }
@@ -603,6 +634,31 @@ Button {
             return .blue
         }
         return .secondary
+    }
+
+    @ViewBuilder
+    private func attendanceInstructionPill(
+        icon: String,
+        text: String,
+        foreground: Color = .secondary,
+        font: Font = .caption
+    ) -> some View {
+        VStack(alignment: .center, spacing: 4) {
+            Image(systemName: icon)
+                .font(.caption)
+            Text(text)
+                .font(font)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .foregroundStyle(foreground)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 4)
+        .padding(.vertical, 6)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color(.systemGray6))
+        )
     }
 
     private func load() async {
