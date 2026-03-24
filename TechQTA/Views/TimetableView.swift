@@ -10,6 +10,9 @@ import SwiftUI
 struct TimetableView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
     @StateObject private var viewModel = TimetableViewModel()
+    @State private var fluidProgress: CGFloat = 0
+    @State private var fluidPhase = "Loading your day…"
+    @State private var fluidGen = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -48,12 +51,13 @@ struct TimetableView: View {
             .padding(.vertical, 12)
 
             if viewModel.isLoading {
-                VStack(spacing: 16) {
-                    ProgressView()
-                    Text("Loading timetable…")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                FluidLoadingBarView(
+                    progress: fluidProgress,
+                    phaseText: fluidPhase,
+                    accessibilityLabel: "Loading timetable"
+                )
+                .padding(.horizontal, 32)
+                .frame(maxWidth: 420)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.top, 60)
             } else if let errorMessage = viewModel.errorMessage {
@@ -84,7 +88,30 @@ struct TimetableView: View {
             }
         }
         .task(id: AppDateFormatters.isoYMD.string(from: viewModel.selectedDate) + "-\(sessionManager.staffId ?? 0)-\(sessionManager.session?.jsessionId ?? "")") {
+            fluidGen += 1
+            let g = fluidGen
+            fluidProgress = 0.06
+            fluidPhase = "Loading your timetable…"
+            withAnimation(.spring(.snappy)) { fluidProgress = 0.12 }
+            let organic = Task {
+                await FluidLoadingCoordinator.runOrganicMilestones(
+                    phases: FluidLoadingCoordinator.Presets.timetable,
+                    generation: g,
+                    currentGeneration: { fluidGen },
+                    progress: $fluidProgress,
+                    phaseText: $fluidPhase
+                )
+            }
             await viewModel.load(sessionManager: sessionManager)
+            organic.cancel()
+            await FluidLoadingCoordinator.snapFinish(
+                generation: g,
+                currentGeneration: { fluidGen },
+                progress: $fluidProgress,
+                phaseText: $fluidPhase,
+                finishingText: "Timetable ready",
+                resetText: "Loading your day…"
+            )
         }
     }
 
@@ -133,6 +160,7 @@ struct TimetableView: View {
             }
         }
         .padding(.vertical, 6)
+        .premiumScrollRowTransition()
     }
 }
 

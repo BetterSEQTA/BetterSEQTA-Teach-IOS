@@ -39,6 +39,9 @@ struct LessonAttendanceView: View {
     @State private var cardIndex = 0
     @State private var cardDragOffset: CGFloat = 0
     @State private var isFlickingAway = false
+    @State private var loadFluidProgress: CGFloat = 0
+    @State private var loadFluidPhase = "Opening class roll…"
+    @State private var loadFluidGen = 0
 
     private let client = TeachAttendanceClient()
     private let cardStackSize = 3
@@ -76,8 +79,15 @@ struct LessonAttendanceView: View {
     var body: some View {
         Group {
             if isLoading && students.isEmpty {
-                ProgressView("Loading attendance…")
-                    .padding()
+                FluidLoadingBarView(
+                    progress: loadFluidProgress,
+                    phaseText: loadFluidPhase,
+                    accessibilityLabel: "Loading attendance"
+                )
+                .padding(.horizontal, 28)
+                .frame(maxWidth: 400)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 32)
             } else if let errorMessage, students.isEmpty {
                 ContentUnavailableView("Attendance unavailable", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
             } else if students.isEmpty {
@@ -123,7 +133,31 @@ struct LessonAttendanceView: View {
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .task {
+            loadFluidGen += 1
+            let g = loadFluidGen
+            loadFluidProgress = 0.06
+            loadFluidPhase = "Opening class roll…"
+            withAnimation(.spring(.snappy)) { loadFluidProgress = 0.12 }
+            let organic = Task {
+                await FluidLoadingCoordinator.runOrganicMilestones(
+                    phases: FluidLoadingCoordinator.Presets.attendance,
+                    generation: g,
+                    currentGeneration: { loadFluidGen },
+                    progress: $loadFluidProgress,
+                    phaseText: $loadFluidPhase
+                )
+            }
             await load()
+            organic.cancel()
+            let doneTitle = (errorMessage != nil) ? "Couldn't load" : (students.isEmpty ? "Done" : "Roll ready")
+            await FluidLoadingCoordinator.snapFinish(
+                generation: g,
+                currentGeneration: { loadFluidGen },
+                progress: $loadFluidProgress,
+                phaseText: $loadFluidPhase,
+                finishingText: doneTitle,
+                resetText: "Opening class roll…"
+            )
         }
         .navigationDestination(isPresented: $showStats) {
             AttendanceStatsView(
@@ -267,7 +301,7 @@ struct LessonAttendanceView: View {
             HStack(spacing: 24) {
                 if cardIndex > 0 {
                     Button {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                        withAnimation(.spring(.snappy)) {
                             cardIndex -= 1
                         }
                     } label: {
@@ -277,7 +311,7 @@ struct LessonAttendanceView: View {
                 }
                 Spacer()
                 Button {
-                    withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                    withAnimation(.spring(.snappy)) {
                         cardIndex += 1
                     }
                 } label: {
@@ -334,7 +368,7 @@ struct LessonAttendanceView: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.top, 12)
-                    .animation(.easeInOut(duration: 0.2), value: cardIndex)
+                    .animation(.spring(.smooth), value: cardIndex)
 
                 ZStack {
                     ForEach(Array(visibleCardRange), id: \.self) { idx in
@@ -344,7 +378,7 @@ struct LessonAttendanceView: View {
                         studentCardContent(student: student)
                             .scaleEffect(1 - CGFloat(stackOffset) * 0.04)
                             .offset(y: CGFloat(stackOffset) * 4)
-                            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: cardIndex)
+                            .animation(.spring(.smooth), value: cardIndex)
                             .overlay(
                                 RoundedRectangle(cornerRadius: 24)
                                     .stroke(Color.primary.opacity(0.06), lineWidth: 1)
@@ -369,7 +403,7 @@ struct LessonAttendanceView: View {
                                             insertion: .scale(scale: 0.5).combined(with: .opacity),
                                             removal: .scale(scale: 0.8).combined(with: .opacity)
                                         ))
-                                        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: cardDragOffset)
+                                        .animation(.spring(.snappy), value: cardDragOffset)
                                         .padding(.leading, 28)
                                 }
                             }
@@ -385,7 +419,7 @@ struct LessonAttendanceView: View {
                                             insertion: .scale(scale: 0.5).combined(with: .opacity),
                                             removal: .scale(scale: 0.8).combined(with: .opacity)
                                         ))
-                                        .animation(.spring(response: 0.25, dampingFraction: 0.75), value: cardDragOffset)
+                                        .animation(.spring(.snappy), value: cardDragOffset)
                                         .padding(.trailing, 28)
                                 }
                             }
@@ -414,7 +448,8 @@ struct LessonAttendanceView: View {
                                         } else if value.translation.width < -threshold || velocity < -200 {
                                             flickCard(direction: -1, student: student, code: "no")
                                         } else {
-                                            withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+                                            FeedbackManager.light()
+                                            withAnimation(.spring(.bouncy)) {
                                                 cardDragOffset = 0
                                             }
                                         }
@@ -434,11 +469,12 @@ struct LessonAttendanceView: View {
         isFlickingAway = true
         pendingChanges[student.id] = code
         let exitX = CGFloat(direction) * 450
-        withAnimation(.easeOut(duration: 0.28)) {
+        FeedbackManager.medium()
+        withAnimation(.spring(.snappy)) {
             cardDragOffset = exitX
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.32) {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.34) {
+            withAnimation(.spring(.smooth)) {
                 advanceCard()
                 cardDragOffset = 0
             }

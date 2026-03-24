@@ -12,6 +12,9 @@ struct ComposeMessageView: View {
     @State private var formatCommand: String?
     @FocusState private var toFieldFocused: Bool
     @FocusState private var subjectFocused: Bool
+    @State private var recipientsFluidProgress: CGFloat = 0
+    @State private var recipientsFluidPhase = "Loading contacts…"
+    @State private var recipientsFluidGen = 0
 
     init(
         mode: ComposeMode = .new,
@@ -57,21 +60,35 @@ struct ComposeMessageView: View {
 
                 Divider()
 
-                // Formatting toolbar + HTML Editor
-                VStack(spacing: 0) {
-                    FormattingToolbar(formatCommand: $formatCommand)
-                    Divider()
+                // Writing area + sticky formatting FAB (bottom-trailing, expands right → left)
+                ZStack(alignment: .topLeading) {
                     Group {
                         if viewModel.isLoadingRecipients && viewModel.hasPrefillContent {
-                            ProgressView("Loading...")
-                                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                .padding(.top, 60)
+                            FluidLoadingBarView(
+                                progress: recipientsFluidProgress,
+                                phaseText: recipientsFluidPhase,
+                                accessibilityLabel: "Loading compose draft"
+                            )
+                            .padding(.horizontal, 28)
+                            .frame(maxWidth: 400)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .padding(.top, 48)
                         } else {
                             ComposeHTMLEditor(html: $viewModel.bodyHTML, initialContent: viewModel.bodyHTML, colorScheme: colorScheme, formatCommand: $formatCommand)
                                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                         }
                     }
+
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                            .allowsHitTesting(false)
+                        MorphingFormattingToolbar(formatCommand: $formatCommand)
+                            .padding(.horizontal, 12)
+                            .padding(.bottom, 10)
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.large)
@@ -163,7 +180,34 @@ struct ComposeMessageView: View {
                 if newValue != nil { }
             }
             .task {
-                await viewModel.loadRecipients(session: sessionManager.session)
+                if viewModel.hasPrefillContent {
+                    recipientsFluidGen += 1
+                    let g = recipientsFluidGen
+                    recipientsFluidProgress = 0.06
+                    recipientsFluidPhase = "Loading contacts…"
+                    withAnimation(.spring(.snappy)) { recipientsFluidProgress = 0.12 }
+                    let organic = Task {
+                        await FluidLoadingCoordinator.runOrganicMilestones(
+                            phases: FluidLoadingCoordinator.Presets.composeRecipients,
+                            generation: g,
+                            currentGeneration: { recipientsFluidGen },
+                            progress: $recipientsFluidProgress,
+                            phaseText: $recipientsFluidPhase
+                        )
+                    }
+                    await viewModel.loadRecipients(session: sessionManager.session)
+                    organic.cancel()
+                    await FluidLoadingCoordinator.snapFinish(
+                        generation: g,
+                        currentGeneration: { recipientsFluidGen },
+                        progress: $recipientsFluidProgress,
+                        phaseText: $recipientsFluidPhase,
+                        finishingText: "Draft ready",
+                        resetText: "Loading contacts…"
+                    )
+                } else {
+                    await viewModel.loadRecipients(session: sessionManager.session)
+                }
             }
         }
     }
@@ -446,46 +490,174 @@ private struct RecipientPickerView: View {
     }
 }
 
-// MARK: - Formatting Toolbar
+// MARK: - Morphing Formatting Toolbar
 
-private struct FormattingToolbar: View {
-    @Binding var formatCommand: String?
+private enum ComposeTextFormat: String, CaseIterable, Hashable {
+    case bold
+    case italic
+    case underline
+    case strikethrough
 
-    var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 4) {
-                formatButton("bold", systemImage: "bold")
-                formatButton("italic", systemImage: "italic")
-                formatButton("underline", systemImage: "underline")
-                formatButton("strikeThrough", systemImage: "strikethrough")
-                Divider()
-                    .frame(height: 20)
-                formatButton("h1", systemImage: "textformat.size.larger", label: "H1")
-                formatButton("h2", systemImage: "textformat.size", label: "H2")
-                formatButton("h3", systemImage: "textformat.size.smaller", label: "H3")
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
+    var execCommand: String {
+        switch self {
+        case .strikethrough: return "strikeThrough"
+        default: return rawValue
         }
-        .background(Color(.secondarySystemBackground))
     }
 
-    private func formatButton(_ command: String, systemImage: String, label: String? = nil) -> some View {
-        Button {
-            FeedbackManager.tripleTap()
-            formatCommand = command
-        } label: {
-            if let label {
-                Text(label)
-                    .font(.caption)
-                    .fontWeight(.semibold)
-            } else {
-                Image(systemName: systemImage)
-                    .font(.system(size: 14))
+    var systemImage: String { rawValue }
+}
+
+private struct MorphingFormattingToolbar: View {
+    @Binding var formatCommand: String?
+    @Environment(\.colorScheme) private var colorScheme
+
+    @State private var isExpanded = false
+    /// Mirrors execCommand toggle taps so active pills feel responsive (selection changes in the editor are not synced).
+    @State private var activeFormats: Set<ComposeTextFormat> = []
+
+    private let formatOrder = Array(ComposeTextFormat.allCases)
+    private let headingItems: [(command: String, label: String)] = [
+        ("h1", "H1"),
+        ("h2", "H2"),
+        ("h3", "H3")
+    ]
+
+    /// Collapsed FAB; expanded bar width capped — inner row scrolls if needed.
+    private var collapsedSize: CGFloat { 52 }
+    private var expandedBarMaxWidth: CGFloat { 304 }
+    private var barHeight: CGFloat { isExpanded ? 52 : collapsedSize }
+
+    /// One spring for expand/collapse; Aa uses the same transaction as the capsule (no separate animation curve).
+    private static let expandSpring = Animation.spring(.bouncy)
+
+    var body: some View {
+        HStack(spacing: 0) {
+            Spacer(minLength: 0)
+            pillContent
+                .frame(maxWidth: isExpanded ? expandedBarMaxWidth : collapsedSize)
+        }
+    }
+
+    private var pillContent: some View {
+        HStack(spacing: 0) {
+            Button {
+                FeedbackManager.medium()
+                withAnimation(Self.expandSpring) {
+                    isExpanded.toggle()
+                }
+            } label: {
+                Text("Aa")
+                    .font(.system(size: 18, weight: .bold, design: .serif))
+                    .foregroundStyle(isExpanded ? .secondary : .primary)
+                    .frame(width: collapsedSize, height: barHeight)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.leading, isExpanded ? 4 : 0)
+            .accessibilityLabel(isExpanded ? "Hide formatting options" : "Show formatting options")
+
+            if isExpanded {
+                Divider()
+                    .frame(height: 24)
+                    .padding(.horizontal, 3)
+                    .transition(.opacity.combined(with: .scale(scale: 0.8)))
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(Array(formatOrder.enumerated()), id: \.element) { index, format in
+                            formatToggleButton(format: format, staggerIndex: index)
+                        }
+
+                        Divider()
+                            .frame(height: 22)
+                            .padding(.horizontal, 2)
+
+                        ForEach(Array(headingItems.enumerated()), id: \.offset) { offset, item in
+                            headingButton(command: item.command, label: item.label, staggerIndex: formatOrder.count + offset)
+                        }
+                    }
+                    .padding(.trailing, 8)
+                    .padding(.leading, 2)
+                }
+                .frame(height: barHeight)
+                .frame(maxWidth: max(0, expandedBarMaxWidth - 58))
+                .transition(.opacity.combined(with: .move(edge: .trailing)))
             }
         }
-        .frame(width: 36, height: 32)
-        .contentShape(Rectangle())
+        .frame(height: barHeight)
+        .padding(.horizontal, isExpanded ? 3 : 0)
+        .background {
+            Capsule()
+                .fill(.ultraThinMaterial)
+                .overlay(
+                    Capsule()
+                        .strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.12 : 0.08), lineWidth: 0.5)
+                )
+                .shadow(color: .black.opacity(isExpanded ? 0.11 : 0.15), radius: isExpanded ? 14 : 10, y: 5)
+        }
+        .clipShape(Capsule())
+    }
+
+    @ViewBuilder
+    private func formatToggleButton(format: ComposeTextFormat, staggerIndex: Int) -> some View {
+        let isActive = activeFormats.contains(format)
+        Button {
+            withAnimation(.spring(.snappy)) {
+                if activeFormats.contains(format) {
+                    activeFormats.remove(format)
+                    FeedbackManager.light()
+                } else {
+                    activeFormats.insert(format)
+                    FeedbackManager.rigidSnap()
+                }
+            }
+            formatCommand = format.execCommand
+        } label: {
+            Image(systemName: format.systemImage)
+                .font(.system(size: 16, weight: isActive ? .bold : .semibold))
+                .foregroundStyle(isActive ? Color.accentColor : .primary)
+                .frame(width: 38, height: 38)
+                .background(
+                    Capsule()
+                        .fill(isActive ? Color.accentColor.opacity(0.18) : Color.clear)
+                )
+                .scaleEffect(isActive ? 1.05 : 1.0)
+        }
+        .buttonStyle(.plain)
+        .animation(.spring(.snappy), value: isActive)
+        .accessibilityLabel(format.rawValue.capitalized)
+        .transition(
+            .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .scale(scale: 0.5).combined(with: .opacity)
+            )
+        )
+        .animation(Self.expandSpring.delay(Double(staggerIndex) * 0.04 + 0.05), value: isExpanded)
+    }
+
+    @ViewBuilder
+    private func headingButton(command: String, label: String, staggerIndex: Int) -> some View {
+        Button {
+            FeedbackManager.light()
+            formatCommand = command
+        } label: {
+            Text(label)
+                .font(.caption)
+                .fontWeight(.semibold)
+                .foregroundStyle(.primary)
+                .frame(minWidth: 30, minHeight: 40)
+                .padding(.horizontal, 3)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Apply \(label) heading")
+        .transition(
+            .asymmetric(
+                insertion: .move(edge: .trailing).combined(with: .opacity),
+                removal: .scale(scale: 0.5).combined(with: .opacity)
+            )
+        )
+        .animation(Self.expandSpring.delay(Double(staggerIndex) * 0.04 + 0.05), value: isExpanded)
     }
 }
 

@@ -7,7 +7,6 @@ import SwiftUI
 import WebKit
 
 struct NoticeDetailView: View {
-    @Environment(\.colorScheme) private var colorScheme
     let notice: TeachNotice
 
     @State private var webViewHeight: CGFloat = 120
@@ -81,7 +80,7 @@ struct NoticeDetailView: View {
 
                 // Notice body (HTML)
                 if let contents = notice.contents, !contents.isEmpty {
-                    NoticeHTMLView(html: contents, colorScheme: colorScheme, height: $webViewHeight)
+                    NoticeHTMLView(html: contents, height: $webViewHeight)
                         .frame(maxWidth: .infinity)
                         .frame(height: max(webViewHeight, 120))
                 } else {
@@ -118,7 +117,6 @@ private struct DetailMetaPill<Content: View>: View {
 
 private struct NoticeHTMLView: UIViewRepresentable {
     let html: String
-    let colorScheme: ColorScheme
     @Binding var height: CGFloat
 
     func makeUIView(context: Context) -> WKWebView {
@@ -136,12 +134,10 @@ private struct NoticeHTMLView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         let coordinator = context.coordinator
-        if coordinator.lastColorScheme != colorScheme || !coordinator.hasLoaded {
-            coordinator.lastColorScheme = colorScheme
-            coordinator.hasLoaded = true
-            let rendered = wrapHTML(html, colorScheme: colorScheme)
-            webView.loadHTMLString(rendered, baseURL: nil)
-        }
+        if coordinator.lastHTML == html, coordinator.hasLoaded { return }
+        coordinator.lastHTML = html
+        coordinator.hasLoaded = true
+        webView.loadHTMLString(wrapHTML(html), baseURL: nil)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -150,7 +146,7 @@ private struct NoticeHTMLView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var hasLoaded = false
-        var lastColorScheme: ColorScheme?
+        var lastHTML: String?
         private var height: Binding<CGFloat>
 
         init(height: Binding<CGFloat>) {
@@ -177,22 +173,21 @@ private struct NoticeHTMLView: UIViewRepresentable {
         }
     }
 
-    private func wrapHTML(_ html: String, colorScheme: ColorScheme) -> String {
-        let isDark = colorScheme == .dark
-        let textColor = isDark ? "#ffffff" : "#000000"
-        let linkColor = isDark ? "#8ab4ff" : "#0a84ff"
-
-        return """
+    /// Light document so notice HTML keeps authored colours readable in dark app mode.
+    private func wrapHTML(_ html: String) -> String {
+        """
         <!doctype html>
-        <html>
+        <html lang="en">
           <head>
+            <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+            <meta name="color-scheme" content="light">
             <style>
-              body { margin: 0; padding: 0; color: \(textColor); font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; background: transparent; }
-              a { color: \(linkColor); }
+              html, body { margin: 0; padding: 0; background: #ffffff; color: #000000; font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; }
+              a { color: #0a84ff; }
               img { max-width: 100%; height: auto; }
               table { border-collapse: collapse; width: 100%; }
-              th, td { border: 1px solid \(isDark ? "#555" : "#d1d5db"); padding: 8px; text-align: left; }
+              th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
             </style>
           </head>
           <body>

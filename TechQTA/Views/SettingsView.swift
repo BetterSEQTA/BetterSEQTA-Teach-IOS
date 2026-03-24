@@ -127,6 +127,12 @@ struct SettingsView: View {
         }
         .listStyle(.insetGrouped)
         .contentMargins(.top, 0, for: .scrollContent)
+        .onChange(of: attendanceViewMode) { _, _ in
+            FeedbackManager.selection()
+        }
+        .onChange(of: faceIDEnabled) { _, enabled in
+            if enabled { FeedbackManager.medium() }
+        }
         .sheet(isPresented: $showAbout) {
             AboutSheet()
         }

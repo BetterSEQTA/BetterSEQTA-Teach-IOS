@@ -45,18 +45,27 @@ struct ContentView: View {
                                 },
                                 onCancel: { sessionManager.cancelLogin() }
                             )
-                            .transition(.move(edge: .bottom))
+                            .transition(.asymmetric(
+                                insertion: .move(edge: .bottom).combined(with: .opacity),
+                                removal: .opacity
+                            ))
                         } else {
                             if setupCompleteForThisLogin {
                                 UrlEntryView()
-                                    .transition(.opacity)
+                                    .transition(.asymmetric(
+                                        insertion: .scale(scale: 0.96).combined(with: .opacity),
+                                        removal: .opacity
+                                    ))
                             } else {
                                 SetupOnboardingView {
-                                    withAnimation {
+                                    withAnimation(.spring(.smooth)) {
                                         setupCompleteForThisLogin = true
                                     }
                                 }
-                                .transition(.opacity)
+                                .transition(.asymmetric(
+                                    insertion: .scale(scale: 0.96).combined(with: .opacity),
+                                    removal: .opacity
+                                ))
                             }
                         }
                     }
@@ -139,7 +148,7 @@ private struct FaceIDLockOverlay: View {
                         .symbolEffect(.bounce, value: phase == .success)
                 }
                 .scaleEffect(phase == .success ? 1.15 : 1.0)
-                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: phase)
+                .animation(.spring(.bouncy), value: phase)
 
                 VStack(spacing: 8) {
                     Text(phase == .success ? "Unlocked" : "Unlock with \(BiometricAuthHelper.biometricTypeName)")
@@ -159,11 +168,15 @@ private struct FaceIDLockOverlay: View {
                             .fontWeight(.medium)
                             .foregroundStyle(isDark ? .white.opacity(0.8) : .primary.opacity(0.8))
                     }
+                    .buttonStyle(BouncyPressButtonStyle())
                     .padding(.top, 8)
                 }
             }
         }
-        .transition(.opacity.combined(with: .scale(scale: 1.02)))
+        .transition(.asymmetric(
+            insertion: .opacity.combined(with: .scale(scale: 0.92)),
+            removal: .opacity.combined(with: .scale(scale: 1.02))
+        ))
         .onAppear {
             if !hasAttempted {
                 hasAttempted = true
@@ -188,7 +201,7 @@ private struct FaceIDLockOverlay: View {
         if success {
             try? await Task.sleep(for: .milliseconds(350))
             await MainActor.run {
-                withAnimation(.easeOut(duration: 0.25)) {
+                withAnimation(.spring(.smooth)) {
                     onDismiss()
                 }
             }

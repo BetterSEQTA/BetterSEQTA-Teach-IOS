@@ -68,7 +68,7 @@ struct SetupOnboardingView: View {
                 .padding(.bottom, 32)
             } else {
                 Button {
-                    withAnimation(.easeInOut(duration: 0.25)) {
+                    withAnimation(.spring(.smooth)) {
                         currentPage += 1
                     }
                 } label: {
@@ -115,6 +115,11 @@ struct SetupOnboardingView: View {
         }
         .contentMargins(.top, 0, for: .scrollContent)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+        )
+        .shadow(color: .black.opacity(0.06), radius: 12, y: 4)
         .padding(.horizontal, 20)
     }
 }

@@ -4,7 +4,6 @@ import QuickLook
 
 struct DireqtMessageDetailView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dismiss) private var dismiss
 
     let messageID: Int
@@ -20,13 +19,26 @@ struct DireqtMessageDetailView: View {
     @State private var webViewHeight: CGFloat = 120
     @State private var smartReplies: [String] = []
     @State private var isLoadingSmartReplies = false
+    @State private var smartReplyLoadProgress: CGFloat = 0
+    @State private var smartReplyPhaseText = "Reading message…"
+    @State private var smartReplyGeneration = 0
     @State private var replyWithSmartReply: String?
+    @State private var detailFluidProgress: CGFloat = 0
+    @State private var detailFluidPhase = "Connecting to Direqt…"
+    @State private var detailFluidGen = 0
 
     var body: some View {
         Group {
             if viewModel.isLoading && viewModel.detail == nil {
-                ProgressView("Loading message...")
-                    .padding()
+                FluidLoadingBarView(
+                    progress: detailFluidProgress,
+                    phaseText: detailFluidPhase,
+                    accessibilityLabel: "Loading message"
+                )
+                .padding(.horizontal, 28)
+                .frame(maxWidth: 400)
+                .frame(maxWidth: .infinity)
+                .padding(.top, 48)
             } else if let errorMessage = viewModel.errorMessage, viewModel.detail == nil {
                 ContentUnavailableView("Message unavailable", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
             } else if let detail = viewModel.detail {
@@ -72,7 +84,7 @@ struct DireqtMessageDetailView: View {
 
                         // Message body
                         if let body = detail.body, !body.isEmpty {
-                            AutoHeightWebView(html: body, colorScheme: colorScheme, height: $webViewHeight)
+                            AutoHeightWebView(html: body, height: $webViewHeight)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: max(webViewHeight, 120))
                         } else {
@@ -125,7 +137,30 @@ struct DireqtMessageDetailView: View {
             }
         }
         .task(id: "\(sessionManager.session?.jsessionId ?? "")-\(messageID)") {
+            detailFluidGen += 1
+            let g = detailFluidGen
+            detailFluidProgress = 0.06
+            detailFluidPhase = "Connecting to Direqt…"
+            withAnimation(.spring(.snappy)) { detailFluidProgress = 0.12 }
+            let organic = Task {
+                await FluidLoadingCoordinator.runOrganicMilestones(
+                    phases: FluidLoadingCoordinator.Presets.messageDetail,
+                    generation: g,
+                    currentGeneration: { detailFluidGen },
+                    progress: $detailFluidProgress,
+                    phaseText: $detailFluidPhase
+                )
+            }
             await viewModel.loadIfNeeded(session: sessionManager.session, messageID: messageID)
+            organic.cancel()
+            await FluidLoadingCoordinator.snapFinish(
+                generation: g,
+                currentGeneration: { detailFluidGen },
+                progress: $detailFluidProgress,
+                phaseText: $detailFluidPhase,
+                finishingText: viewModel.detail != nil ? "Message ready" : "Done",
+                resetText: "Connecting to Direqt…"
+            )
         }
         .fullScreenCover(isPresented: previewPresentedBinding) {
             if let previewItemURL {
@@ -299,7 +334,7 @@ struct DireqtMessageDetailView: View {
                         if participants.count > 3 {
                             Button {
                                 FeedbackManager.doubleTap()
-                                withAnimation(.snappy(duration: 0.2)) {
+                                withAnimation(.spring(.bouncy)) {
                                     participantsExpanded.toggle()
                                 }
                             } label: {
@@ -322,13 +357,6 @@ struct DireqtMessageDetailView: View {
                     .font(.headline)
                 if isLoadingSmartReplies {
                     Spacer()
-                    HStack(spacing: 6) {
-                        ProgressView()
-                            .scaleEffect(0.8)
-                        Text("Generating…")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
                 } else if !smartReplies.isEmpty {
                     Spacer()
                     Button {
@@ -351,11 +379,17 @@ struct DireqtMessageDetailView: View {
                         .font(.subheadline)
                 }
             } else if isLoadingSmartReplies {
-                VStack(spacing: 8) {
-                    ForEach(0..<3, id: \.self) { _ in
-                        SmartReplySkeleton()
-                    }
-                }
+                FluidLoadingBarView(
+                    progress: smartReplyLoadProgress,
+                    phaseText: smartReplyPhaseText,
+                    accessibilityLabel: "Generating smart replies"
+                )
+                    .transition(
+                        .asymmetric(
+                            insertion: .scale(scale: 0.92).combined(with: .opacity),
+                            removal: .scale(scale: 1.06).combined(with: .opacity)
+                        )
+                    )
             } else if !smartReplies.isEmpty {
                 VStack(spacing: 8) {
                     ForEach(Array(smartReplies.enumerated()), id: \.offset) { index, reply in
@@ -370,13 +404,22 @@ struct DireqtMessageDetailView: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 14)
                                 .padding(.vertical, 10)
-                                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10))
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 10))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .strokeBorder(Color.primary.opacity(0.06), lineWidth: 0.5)
+                                )
                         }
                         .buttonStyle(.plain)
-                        .transition(.opacity.combined(with: .move(edge: .top)))
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .bottom).combined(with: .opacity),
+                                removal: .opacity
+                            )
+                        )
                     }
                 }
-                .animation(.easeOut(duration: 0.3), value: smartReplies.count)
+                .animation(.spring(.bouncy), value: smartReplies.count)
             }
         }
         .task(id: body) {
@@ -390,14 +433,61 @@ struct DireqtMessageDetailView: View {
 
     private func loadSmartReplies(body: String, forceRegenerate: Bool = false) {
         guard !isLoadingSmartReplies else { return }
+        smartReplyGeneration += 1
+        let generation = smartReplyGeneration
         isLoadingSmartReplies = true
+        smartReplyLoadProgress = 0
+        smartReplyPhaseText = "Reading message…"
         if forceRegenerate { smartReplies = [] }
+
+        withAnimation(.spring(.snappy)) {
+            smartReplyLoadProgress = 0.1
+        }
+        FeedbackManager.light()
+
+        Task { @MainActor in
+            await runSmartReplyOrganicProgress(generation: generation)
+        }
+
         Task {
             let plainText = body.plainTextFromHTML
             let replies = await SmartReplyProvider.suggestReplies(for: plainText, messageID: messageID, forceRegenerate: forceRegenerate)
             await MainActor.run {
-                smartReplies = replies ?? []
-                isLoadingSmartReplies = false
+                finishSmartReplyLoading(generation: generation, replies: replies ?? [])
+            }
+        }
+    }
+
+    private func runSmartReplyOrganicProgress(generation: Int) async {
+        await FluidLoadingCoordinator.runOrganicMilestones(
+            phases: FluidLoadingCoordinator.Presets.smartReplies,
+            generation: generation,
+            currentGeneration: { smartReplyGeneration },
+            progress: $smartReplyLoadProgress,
+            phaseText: $smartReplyPhaseText
+        )
+    }
+
+    private func finishSmartReplyLoading(generation: Int, replies: [String]) {
+        guard generation == smartReplyGeneration else { return }
+        let hasReplies = !replies.isEmpty
+        withAnimation(.spring(.snappy)) {
+            smartReplyLoadProgress = 1.0
+            smartReplyPhaseText = hasReplies ? "Almost ready…" : "Finishing up…"
+        }
+        Task {
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            await MainActor.run {
+                guard generation == smartReplyGeneration else { return }
+                withAnimation(.spring(.smooth)) {
+                    smartReplies = replies
+                    isLoadingSmartReplies = false
+                    smartReplyLoadProgress = 0
+                    smartReplyPhaseText = "Reading message…"
+                }
+                if hasReplies {
+                    FeedbackManager.success()
+                }
             }
         }
     }
@@ -623,24 +713,6 @@ private struct AttachmentQuickLookPreview: UIViewControllerRepresentable {
     }
 }
 
-// MARK: - Smart Reply Skeleton
-
-private struct SmartReplySkeleton: View {
-    @State private var opacity: Double = 0.4
-
-    var body: some View {
-        RoundedRectangle(cornerRadius: 10)
-            .fill(Color(.systemGray5))
-            .frame(height: 44)
-            .opacity(opacity)
-            .onAppear {
-                withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                    opacity = 0.7
-                }
-            }
-    }
-}
-
 // MARK: - Flow Layout for wrapping pills
 
 private struct FlowLayout: Layout {
@@ -689,7 +761,6 @@ private struct FlowLayout: Layout {
 
 private struct AutoHeightWebView: UIViewRepresentable {
     let html: String
-    let colorScheme: ColorScheme
     @Binding var height: CGFloat
 
     func makeUIView(context: Context) -> WKWebView {
@@ -707,20 +778,10 @@ private struct AutoHeightWebView: UIViewRepresentable {
 
     func updateUIView(_ webView: WKWebView, context: Context) {
         let coordinator = context.coordinator
-
-        if coordinator.lastColorScheme != colorScheme {
-            coordinator.lastColorScheme = colorScheme
-            coordinator.hasLoaded = true
-            let rendered = wrapHTML(html, colorScheme: colorScheme)
-            webView.loadHTMLString(rendered, baseURL: nil)
-            return
-        }
-
-        guard !coordinator.hasLoaded else { return }
+        if coordinator.lastHTML == html, coordinator.hasLoaded { return }
+        coordinator.lastHTML = html
         coordinator.hasLoaded = true
-        coordinator.lastColorScheme = colorScheme
-        let rendered = wrapHTML(html, colorScheme: colorScheme)
-        webView.loadHTMLString(rendered, baseURL: nil)
+        webView.loadHTMLString(wrapHTML(html), baseURL: nil)
     }
 
     func makeCoordinator() -> Coordinator {
@@ -729,7 +790,7 @@ private struct AutoHeightWebView: UIViewRepresentable {
 
     final class Coordinator: NSObject, WKNavigationDelegate {
         var hasLoaded = false
-        var lastColorScheme: ColorScheme?
+        var lastHTML: String?
         private var height: Binding<CGFloat>
 
         init(height: Binding<CGFloat>) {
@@ -756,26 +817,24 @@ private struct AutoHeightWebView: UIViewRepresentable {
         }
     }
 
-    private func wrapHTML(_ html: String, colorScheme: ColorScheme) -> String {
-        let isDark = colorScheme == .dark
-        let textColor = isDark ? "#ffffff" : "#000000"
-        let linkColor = isDark ? "#8ab4ff" : "#0a84ff"
-        let darkClass = isDark ? " class=\"dark\"" : ""
-
-        return """
+    /// Renders as a light document so SEQTA / email HTML keeps its own colours (e.g. black text) readable.
+    private func wrapHTML(_ html: String) -> String {
+        """
         <!doctype html>
-        <html>
+        <html lang="en">
           <head>
+            <meta charset="utf-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+            <meta name="color-scheme" content="light">
             <style>
-              body { margin: 0; padding: 0; color: \(textColor); font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; background: transparent; }
-              a { color: \(linkColor); }
+              html, body { margin: 0; padding: 0; background: #ffffff; color: #000000; font-family: -apple-system, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 1.5; }
+              a { color: #0a84ff; }
               img { max-width: 100%; height: auto; }
               blockquote.forward {
-                border-left: 3px solid \(isDark ? "#555" : "#d1d5db");
+                border-left: 3px solid #d1d5db;
                 padding-left: 12px;
                 margin: 12px 0;
-                color: \(isDark ? "#aaa" : "#6b7280");
+                color: #6b7280;
               }
               blockquote.forward .preamble {
                 margin-bottom: 8px;
@@ -790,61 +849,10 @@ private struct AutoHeightWebView: UIViewRepresentable {
               }
             </style>
           </head>
-          <body\(darkClass)>
+          <body>
             \(html)
           </body>
-          \(isDark ? Self.darkModeContrastScript : "")
         </html>
         """
     }
-
-    private static let darkModeContrastScript = """
-    <script>
-    (function() {
-      function luminance(r, g, b) {
-        var a = [r, g, b].map(function(v) {
-          v /= 255;
-          return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
-        });
-        return 0.2126 * a[0] + 0.7152 * a[1] + 0.0722 * a[2];
-      }
-
-      function parseColor(str) {
-        var m = str.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
-        if (m) return { r: +m[1], g: +m[2], b: +m[3], a: m[4] !== undefined ? parseFloat(m[4]) : 1 };
-        return null;
-      }
-
-      function hasExplicitBg(el) {
-        var inline = el.style.backgroundColor;
-        if (inline && inline !== '' && inline !== 'transparent' && inline !== 'rgba(0, 0, 0, 0)') return true;
-        if (el.getAttribute('bgcolor')) return true;
-        return false;
-      }
-
-      var els = document.body.querySelectorAll('*');
-      for (var i = 0; i < els.length; i++) {
-        var el = els[i];
-        if (!hasExplicitBg(el)) continue;
-
-        var bg = getComputedStyle(el).backgroundColor;
-        var c = parseColor(bg);
-        if (!c || c.a < 0.1) continue;
-
-        var lum = luminance(c.r, c.g, c.b);
-        if (lum > 0.4) {
-          el.style.color = '';
-          el.dataset.darkPreserved = '1';
-          var children = el.querySelectorAll('*');
-          for (var j = 0; j < children.length; j++) {
-            if (!hasExplicitBg(children[j])) {
-              children[j].style.color = '';
-              children[j].dataset.darkPreserved = '1';
-            }
-          }
-        }
-      }
-    })();
-    </script>
-    """
 }

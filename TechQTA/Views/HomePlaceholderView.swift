@@ -11,6 +11,12 @@ struct HomePlaceholderView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
     @Binding var selectedTab: AppTab
     @StateObject private var viewModel = HomeDashboardViewModel()
+    @State private var lessonsFluidProgress: CGFloat = 0
+    @State private var lessonsFluidPhase = "Fetching today's classes…"
+    @State private var lessonsLoadWave = 0
+    @State private var messagesFluidProgress: CGFloat = 0
+    @State private var messagesFluidPhase = "Opening Direqt…"
+    @State private var messagesLoadWave = 0
 
     var body: some View {
         Group {
@@ -91,20 +97,20 @@ struct HomePlaceholderView: View {
                             .font(.subheadline)
                             .fontWeight(.medium)
                     }
+                    .buttonStyle(BouncyPressButtonStyle())
                 }
             }
 
             // Direqt Messages Section
             Section {
                 if viewModel.messagesLoading {
-                    HStack(spacing: 12) {
-                        ProgressView()
-                        Text("Loading messages…")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
+                    FluidLoadingBarView(
+                        progress: messagesFluidProgress,
+                        phaseText: messagesFluidPhase,
+                        accessibilityLabel: "Loading recent messages"
+                    )
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 20)
+                    .padding(.vertical, 16)
                     .listRowBackground(Color.clear)
                 } else if let err = viewModel.messagesError {
                     Text("Error: \(err)")
@@ -155,12 +161,79 @@ struct HomePlaceholderView: View {
                             .font(.subheadline)
                             .fontWeight(.medium)
                     }
+                    .buttonStyle(BouncyPressButtonStyle())
                 }
             }
         }
         .listStyle(.insetGrouped)
         .contentMargins(.top, 0, for: .scrollContent)
         .listSectionSpacing(16)
+        .task(id: viewModel.lessonsLoading) {
+            guard viewModel.lessonsLoading else { return }
+            lessonsLoadWave += 1
+            let wave = lessonsLoadWave
+            lessonsFluidProgress = 0.06
+            lessonsFluidPhase = "Fetching today's classes…"
+            withAnimation(.spring(.snappy)) { lessonsFluidProgress = 0.12 }
+            let organic = Task {
+                await FluidLoadingCoordinator.runOrganicMilestones(
+                    phases: FluidLoadingCoordinator.Presets.homeLessons,
+                    generation: wave,
+                    currentGeneration: { lessonsLoadWave },
+                    progress: $lessonsFluidProgress,
+                    phaseText: $lessonsFluidPhase
+                )
+            }
+            defer {
+                organic.cancel()
+                Task { @MainActor in
+                    await FluidLoadingCoordinator.snapFinish(
+                        generation: wave,
+                        currentGeneration: { lessonsLoadWave },
+                        progress: $lessonsFluidProgress,
+                        phaseText: $lessonsFluidPhase,
+                        finishingText: "Lessons ready",
+                        resetText: "Fetching today's classes…"
+                    )
+                }
+            }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(400))
+            }
+        }
+        .task(id: viewModel.messagesLoading) {
+            guard viewModel.messagesLoading else { return }
+            messagesLoadWave += 1
+            let wave = messagesLoadWave
+            messagesFluidProgress = 0.06
+            messagesFluidPhase = "Opening Direqt…"
+            withAnimation(.spring(.snappy)) { messagesFluidProgress = 0.12 }
+            let organic = Task {
+                await FluidLoadingCoordinator.runOrganicMilestones(
+                    phases: FluidLoadingCoordinator.Presets.homeMessages,
+                    generation: wave,
+                    currentGeneration: { messagesLoadWave },
+                    progress: $messagesFluidProgress,
+                    phaseText: $messagesFluidPhase
+                )
+            }
+            defer {
+                organic.cancel()
+                Task { @MainActor in
+                    await FluidLoadingCoordinator.snapFinish(
+                        generation: wave,
+                        currentGeneration: { messagesLoadWave },
+                        progress: $messagesFluidProgress,
+                        phaseText: $messagesFluidPhase,
+                        finishingText: "Messages ready",
+                        resetText: "Opening Direqt…"
+                    )
+                }
+            }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(400))
+            }
+        }
     }
 
     @ViewBuilder
@@ -203,6 +276,7 @@ struct HomePlaceholderView: View {
             }
         }
         .padding(.vertical, 6)
+        .premiumScrollRowTransition()
     }
 
     @ViewBuilder
@@ -248,6 +322,7 @@ struct HomePlaceholderView: View {
             }
         }
         .padding(.vertical, 6)
+        .premiumScrollRowTransition()
     }
 
 }

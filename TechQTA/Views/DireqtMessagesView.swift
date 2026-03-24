@@ -5,13 +5,23 @@ struct DireqtMessagesView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
     @StateObject private var viewModel = DireqtMessagesViewModel()
     @State private var showCompose = false
+    @State private var listFluidProgress: CGFloat = 0
+    @State private var listFluidPhase = "Opening your inbox…"
+    @State private var listFluidGen = 0
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             Group {
                 if viewModel.isLoading && viewModel.messages.isEmpty {
-                    ProgressView("Loading messages...")
-                        .padding()
+                    FluidLoadingBarView(
+                        progress: listFluidProgress,
+                        phaseText: listFluidPhase,
+                        accessibilityLabel: "Loading messages"
+                    )
+                    .padding(.horizontal, 28)
+                    .frame(maxWidth: 400)
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 48)
                 } else if let errorMessage = viewModel.errorMessage, viewModel.messages.isEmpty {
                     ContentUnavailableView("Messages unavailable", systemImage: "exclamationmark.triangle", description: Text(errorMessage))
                 } else {
@@ -23,7 +33,35 @@ struct DireqtMessagesView: View {
                 viewModel.searchDebounced(session: sessionManager.session)
             }
             .task(id: sessionManager.session?.jsessionId) {
+                guard sessionManager.session != nil else { return }
+                guard viewModel.messages.isEmpty else {
+                    await viewModel.loadIfNeeded(session: sessionManager.session)
+                    return
+                }
+                listFluidGen += 1
+                let g = listFluidGen
+                listFluidProgress = 0.06
+                listFluidPhase = "Opening your inbox…"
+                withAnimation(.spring(.snappy)) { listFluidProgress = 0.12 }
+                let organic = Task {
+                    await FluidLoadingCoordinator.runOrganicMilestones(
+                        phases: FluidLoadingCoordinator.Presets.messagesList,
+                        generation: g,
+                        currentGeneration: { listFluidGen },
+                        progress: $listFluidProgress,
+                        phaseText: $listFluidPhase
+                    )
+                }
                 await viewModel.loadIfNeeded(session: sessionManager.session)
+                organic.cancel()
+                await FluidLoadingCoordinator.snapFinish(
+                    generation: g,
+                    currentGeneration: { listFluidGen },
+                    progress: $listFluidProgress,
+                    phaseText: $listFluidPhase,
+                    finishingText: "Inbox ready",
+                    resetText: "Opening your inbox…"
+                )
             }
 
             // Floating search + compose
@@ -52,6 +90,7 @@ struct DireqtMessagesView: View {
                         .background(Circle().fill(.ultraThinMaterial))
                         .overlay(Circle().strokeBorder(Color.primary.opacity(colorScheme == .dark ? 0.25 : 0.2), lineWidth: 0.5))
                 }
+                .buttonStyle(.plain)
             }
             .shadow(color: .black.opacity(colorScheme == .dark ? 0.3 : 0.08), radius: 12, y: 4)
             .padding(.horizontal, 20)
@@ -75,7 +114,7 @@ struct DireqtMessagesView: View {
                         FeedbackManager.doubleTap()
                         let label = item.label
                         let session = sessionManager.session
-                        withAnimation(.snappy(duration: 0.25)) {
+                        withAnimation(.spring(.snappy)) {
                             viewModel.selectedLabel = label
                         }
                         Task {
@@ -116,8 +155,8 @@ struct DireqtMessagesView: View {
                         )
                         .foregroundStyle(isSelected ? .white : .primary)
                     }
-                    .buttonStyle(.plain)
-                    .animation(.snappy(duration: 0.25), value: isSelected)
+                    .buttonStyle(BouncyPressButtonStyle())
+                    .animation(.spring(.bouncy), value: isSelected)
                 }
             }
             .padding(.horizontal)
@@ -313,5 +352,6 @@ struct DireqtMessagesView: View {
             }
         }
         .padding(.vertical, 8)
+        .premiumScrollRowTransition()
     }
 }

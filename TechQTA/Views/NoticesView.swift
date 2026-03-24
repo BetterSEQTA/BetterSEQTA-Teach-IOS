@@ -8,6 +8,9 @@ import SwiftUI
 struct NoticesView: View {
     @EnvironmentObject private var sessionManager: TeachSessionManager
     @StateObject private var viewModel = NoticesViewModel()
+    @State private var fluidProgress: CGFloat = 0
+    @State private var fluidPhase = "Loading notices…"
+    @State private var fluidGen = 0
 
     var body: some View {
         VStack(spacing: 0) {
@@ -47,12 +50,13 @@ struct NoticesView: View {
             .padding(.vertical, 12)
 
             if viewModel.isLoading && viewModel.notices.isEmpty {
-                VStack(spacing: 16) {
-                    ProgressView()
-                    Text("Loading notices…")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                FluidLoadingBarView(
+                    progress: fluidProgress,
+                    phaseText: fluidPhase,
+                    accessibilityLabel: "Loading notices"
+                )
+                .padding(.horizontal, 32)
+                .frame(maxWidth: 420)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.top, 60)
             } else if let errorMessage = viewModel.errorMessage, viewModel.notices.isEmpty {
@@ -83,7 +87,30 @@ struct NoticesView: View {
             }
         }
         .task(id: AppDateFormatters.isoYMD.string(from: viewModel.selectedDate) + "-\(sessionManager.session?.jsessionId ?? "")") {
+            fluidGen += 1
+            let g = fluidGen
+            fluidProgress = 0.06
+            fluidPhase = "Loading notices…"
+            withAnimation(.spring(.snappy)) { fluidProgress = 0.12 }
+            let organic = Task {
+                await FluidLoadingCoordinator.runOrganicMilestones(
+                    phases: FluidLoadingCoordinator.Presets.notices,
+                    generation: g,
+                    currentGeneration: { fluidGen },
+                    progress: $fluidProgress,
+                    phaseText: $fluidPhase
+                )
+            }
             await viewModel.load(session: sessionManager.session)
+            organic.cancel()
+            await FluidLoadingCoordinator.snapFinish(
+                generation: g,
+                currentGeneration: { fluidGen },
+                progress: $fluidProgress,
+                phaseText: $fluidPhase,
+                finishingText: "Notices ready",
+                resetText: "Loading notices…"
+            )
         }
     }
 
@@ -144,6 +171,7 @@ struct NoticesView: View {
             }
         }
         .padding(.vertical, 8)
+        .premiumScrollRowTransition()
     }
 
     private func labelColor(_ hex: String?) -> Color {

@@ -68,6 +68,12 @@ enum FeedbackManager {
         gen.impactOccurred()
     }
 
+    /// Rigid snap – format / toggle ON (heavier click)
+    static func rigidSnap() {
+        let gen = UIImpactFeedbackGenerator(style: .rigid)
+        gen.impactOccurred()
+    }
+
     /// Medium impact – save, major actions (reduced from heavy)
     static func heavy() {
         let gen = UIImpactFeedbackGenerator(style: .medium)

@@ -60,7 +60,11 @@ struct UrlEntryView: View {
                             .focused($isUrlFocused)
                             .padding(.horizontal, 16)
                             .padding(.vertical, 16)
-                            .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5)
+                            )
                             .onSubmit {
                                 guard let url = validatedUrl else { return }
                                 FeedbackManager.doubleTap()
@@ -110,7 +114,7 @@ struct UrlEntryView: View {
                 .padding(.vertical, 16)
                 .padding(.bottom, 8)
             }
-            .background(Color(.systemBackground))
+            .background(.ultraThinMaterial)
         }
         .navigationTitle("Log in")
         .navigationBarTitleDisplayMode(.inline)
